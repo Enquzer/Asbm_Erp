@@ -1,0 +1,390 @@
+{% extends 'base.html' %}
+{% block title %}Sales Report{% endblock %}
+{% block content %}
+<h1>Sales Report</h1>
+
+<!-- Date Range Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Filter by Date Range</h5>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="start_date" class="form-label">Start Date</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}" required>
+            </div>
+            <div class="mb-3">
+                <label for="end_date" class="form-label">End Date</label>
+                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </form>
+    </div>
+</div>
+
+<!-- Tabs for Different Periods -->
+<ul class="nav nav-tabs" id="salesReportTabs" role="tablist">
+    <li class="nav-item">
+        <a class="nav-link active" id="weekly-tab" data-bs-toggle="tab" href="#weekly" role="tab">Weekly</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="monthly-tab" data-bs-toggle="tab" href="#monthly" role="tab">Monthly</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="quarterly-tab" data-bs-toggle="tab" href="#quarterly" role="tab">Quarterly</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="bi-annual-tab" data-bs-toggle="tab" href="#bi-annual" role="tab">Bi-Annual</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="annual-tab" data-bs-toggle="tab" href="#annual" role="tab">Annual</a>
+    </li>
+</ul>
+
+<div class="tab-content" id="salesReportTabContent">
+    <!-- Weekly Tab -->
+    <div class="tab-pane fade show active" id="weekly" role="tabpanel">
+        <h2>Weekly Sales Report</h2>
+        <a href="{{ url_for('sales.export_excel', period='weekly', start_date=start_date, end_date=end_date) }}" class="btn btn-success mb-3">Export to Excel</a>
+        <a href="{{ url_for('sales.export_pdf', period='weekly', start_date=start_date, end_date=end_date) }}" class="btn btn-danger mb-3">Export to PDF</a>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Sale Type</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Actual Quantity</th>
+                    <th>Actual Value</th>
+                    <th>Planned Quantity</th>
+                    <th>Planned Value</th>
+                    <th>Quantity %</th>
+                    <th>Value %</th>
+                    <th>Product Share %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in sales_data.weekly.data %}
+                <tr {% if entry.quantity_percentage < 50 or entry.value_percentage < 50 %}class="table-danger"{% endif %}>
+                    <td>{{ entry.product_name }}</td>
+                    <td>{{ entry.sale_type }}</td>
+                    <td>{{ entry.start_date }}</td>
+                    <td>{{ entry.end_date }}</td>
+                    <td>{{ entry.actual_quantity | round(2) }}</td>
+                    <td>{{ entry.actual_value | round(2) }}</td>
+                    <td>{{ entry.planned_quantity | round(2) }}</td>
+                    <td>{{ entry.planned_value | round(2) }}</td>
+                    <td>{{ entry.quantity_percentage | round(2) }}% {% if entry.quantity_percentage < 50 %}<span class="text-danger">⚠️</span>{% endif %}</td>
+                    <td>{{ entry.value_percentage | round(2) }}% {% if entry.value_percentage < 50 %}<span class="text-danger">⚠️</span>{% endif %}</td>
+                    <td>{{ entry.product_share | round(2) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="row">
+            <div class="col-md-12">
+                <h3>Plan vs Actual Sales (Weekly)</h3>
+                <canvas id="weeklySalesChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Tab -->
+    <div class="tab-pane fade" id="monthly" role="tabpanel">
+        <h2>Monthly Sales Report</h2>
+        <a href="{{ url_for('sales.export_excel', period='monthly', start_date=start_date, end_date=end_date) }}" class="btn btn-success mb-3">Export to Excel</a>
+        <a href="{{ url_for('sales.export_pdf', period='monthly', start_date=start_date, end_date=end_date) }}" class="btn btn-danger mb-3">Export to PDF</a>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Sale Type</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Actual Quantity</th>
+                    <th>Actual Value</th>
+                    <th>Planned Quantity</th>
+                    <th>Planned Value</th>
+                    <th>Quantity %</th>
+                    <th>Value %</th>
+                    <th>Product Share %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in sales_data.monthly.data %}
+                <tr {% if entry.quantity_percentage < 50 or entry.value_percentage < 50 %}class="table-danger"{% endif %}>
+                    <td>{{ entry.product_name }}</td>
+                    <td>{{ entry.sale_type }}</td>
+                    <td>{{ entry.start_date }}</td>
+                    <td>{{ entry.end_date }}</td>
+                    <td>{{ entry.actual_quantity | round(2) }}</td>
+                    <td>{{ entry.actual_value | round(2) }}</td>
+                    <td>{{ entry.planned_quantity | round(2) }}</td>
+                    <td>{{ entry.planned_value | round(2) }}</td>
+                    <td>{{ entry.quantity_percentage | round(2) }}% {% if entry.quantity_percentage < 50 %}<span class="text-danger">⚠️</span>{% endif %}</td>
+                    <td>{{ entry.value_percentage | round(2) }}% {% if entry.value_percentage < 50 %}<span class="text-danger">⚠️</span>{% endif %}</td>
+                    <td>{{ entry.product_share | round(2) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="row">
+            <div class="col-md-12">
+                <h3>Plan vs Actual Sales (Monthly)</h3>
+                <canvas id="monthlySalesChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quarterly Tab -->
+    <div class="tab-pane fade" id="quarterly" role="tabpanel">
+        <h2>Quarterly Sales Report</h2>
+        <a href="{{ url_for('sales.export_excel', period='quarterly', start_date=start_date, end_date=end_date) }}" class="btn btn-success mb-3">Export to Excel</a>
+        <a href="{{ url_for('sales.export_pdf', period='quarterly', start_date=start_date, end_date=end_date) }}" class="btn btn-danger mb-3">Export to PDF</a>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Sale Type</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Actual Quantity</th>
+                    <th>Actual Value</th>
+                    <th>Planned Quantity</th>
+                    <th>Planned Value</th>
+                    <th>Quantity %</th>
+                    <th>Value %</th>
+                    <th>Product Share %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in sales_data.quarterly.data %}
+                <tr {% if entry.quantity_percentage < 50 or entry.value_percentage < 50 %}class="table-danger"{% endif %}>
+                    <td>{{ entry.product_name }}</td>
+                    <td>{{ entry.sale_type }}</td>
+                    <td>{{ entry.start_date }}</td>
+                    <td>{{ entry.end_date }}</td>
+                    <td>{{ entry.actual_quantity | round(2) }}</td>
+                    <td>{{ entry.actual_value | round(2) }}</td>
+                    <td>{{ entry.planned_quantity | round(2) }}</td>
+                    <td>{{ entry.planned_value | round(2) }}</td>
+                    <td>{{ entry.quantity_percentage | round(2) }}% {% if entry.quantity_percentage < 50 %}<span class="text-danger">⚠️</span>{% endif %}</td>
+                    <td>{{ entry.value_percentage | round(2) }}% {% if entry.value_percentage < 50 %}<span class="text-danger">⚠️</span>{% endif %}</td>
+                    <td>{{ entry.product_share | round(2) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="row">
+            <div class="col-md-12">
+                <h3>Plan vs Actual Sales (Quarterly)</h3>
+                <canvas id="quarterlySalesChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bi-Annual Tab -->
+    <div class="tab-pane fade" id="bi-annual" role="tabpanel">
+        <h2>Bi-Annual Sales Report</h2>
+        <a href="{{ url_for('sales.export_excel', period='bi_annual', start_date=start_date, end_date=end_date) }}" class="btn btn-success mb-3">Export to Excel</a>
+        <a href="{{ url_for('sales.export_pdf', period='bi_annual', start_date=start_date, end_date=end_date) }}" class="btn btn-danger mb-3">Export to PDF</a>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Sale Type</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Actual Quantity</th>
+                    <th>Actual Value</th>
+                    <th>Planned Quantity</th>
+                    <th>Planned Value</th>
+                    <th>Quantity %</th>
+                    <th>Value %</th>
+                    <th>Product Share %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in sales_data.bi_annual.data %}
+                <tr {% if entry.quantity_percentage < 50 or entry.value_percentage < 50 %}class="table-danger"{% endif %}>
+                    <td>{{ entry.product_name }}</td>
+                    <td>{{ entry.sale_type }}</td>
+                    <td>{{ entry.start_date }}</td>
+                    <td>{{ entry.end_date }}</td>
+                    <td>{{ entry.actual_quantity | round(2) }}</td>
+                    <td>{{ entry.actual_value | round(2) }}</td>
+                    <td>{{ entry.planned_quantity | round(2) }}</td>
+                    <td>{{ entry.planned_value | round(2) }}</td>
+                    <td>{{ entry.quantity_percentage | round(2) }}% {% if entry.quantity_percentage < 50 %}<span class="text-danger">⚠️</span>{% endif %}</td>
+                    <td>{{ entry.value_percentage | round(2) }}% {% if entry.value_percentage < 50 %}<span class="text-danger">⚠️</span>{% endif %}</td>
+                    <td>{{ entry.product_share | round(2) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="row">
+            <div class="col-md-12">
+                <h3>Plan vs Actual Sales (Bi-Annual)</h3>
+                <canvas id="biAnnualSalesChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Annual Tab -->
+    <div class="tab-pane fade" id="annual" role="tabpanel">
+        <h2>Annual Sales Report</h2>
+        <a href="{{ url_for('sales.export_excel', period='annual', start_date=start_date, end_date=end_date) }}" class="btn btn-success mb-3">Export to Excel</a>
+        <a href="{{ url_for('sales.export_pdf', period='annual', start_date=start_date, end_date=end_date) }}" class="btn btn-danger mb-3">Export to PDF</a>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Sale Type</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Actual Quantity</th>
+                    <th>Actual Value</th>
+                    <th>Planned Quantity</th>
+                    <th>Planned Value</th>
+                    <th>Quantity %</th>
+                    <th>Value %</th>
+                    <th>Product Share %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in sales_data.annual.data %}
+                <tr {% if entry.quantity_percentage < 50 or entry.value_percentage < 50 %}class="table-danger"{% endif %}>
+                    <td>{{ entry.product_name }}</td>
+                    <td>{{ entry.sale_type }}</td>
+                    <td>{{ entry.start_date }}</td>
+                    <td>{{ entry.end_date }}</td>
+                    <td>{{ entry.actual_quantity | round(2) }}</td>
+                    <td>{{ entry.actual_value | round(2) }}</td>
+                    <td>{{ entry.planned_quantity | round(2) }}</td>
+                    <td>{{ entry.planned_value | round(2) }}</td>
+                    <td>{{ entry.quantity_percentage | round(2) }}% {% if entry.quantity_percentage < 50 %}<span class="text-danger">⚠️</span>{% endif %}</td>
+                    <td>{{ entry.value_percentage | round(2) }}% {% if entry.value_percentage < 50 %}<span class="text-danger">⚠️</span>{% endif %}</td>
+                    <td>{{ entry.product_share | round(2) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="row">
+            <div class="col-md-12">
+                <h3>Plan vs Actual Sales (Annual)</h3>
+                <canvas id="annualSalesChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Define colors array in JavaScript
+    const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
+
+    // Function to create chart datasets dynamically
+    function createChartDatasets(chartData, period) {
+        const datasets = [];
+        let index = 0;
+        for (const [key, actualValues] of Object.entries(chartData[period].actual_sales)) {
+            const colorIndex = index % colors.length;
+            datasets.push({
+                label: `${key} (Actual)`,
+                data: actualValues,
+                backgroundColor: colors[colorIndex],
+                stack: 'Stack 0'
+            });
+            datasets.push({
+                label: `${key} (Planned)`,
+                data: chartData[period].planned_sales[key],
+                backgroundColor: colors[colorIndex].replace('1)', '0.3)'),
+                stack: 'Stack 1'
+            });
+            index++;
+        }
+        return datasets;
+    }
+
+    // Weekly Sales Chart
+    const weeklySalesCtx = document.getElementById('weeklySalesChart').getContext('2d');
+    new Chart(weeklySalesCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ chart_data.weekly.labels | tojson }},
+            datasets: createChartDatasets({{ chart_data | tojson }}, 'weekly')
+        },
+        options: {
+            scales: {
+                x: { stacked: true },
+                y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Value (ETB)' } }
+            }
+        }
+    });
+
+    // Monthly Sales Chart
+    const monthlySalesCtx = document.getElementById('monthlySalesChart').getContext('2d');
+    new Chart(monthlySalesCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ chart_data.monthly.labels | tojson }},
+            datasets: createChartDatasets({{ chart_data | tojson }}, 'monthly')
+        },
+        options: {
+            scales: {
+                x: { stacked: true },
+                y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Value (ETB)' } }
+            }
+        }
+    });
+
+    // Quarterly Sales Chart
+    const quarterlySalesCtx = document.getElementById('quarterlySalesChart').getContext('2d');
+    new Chart(quarterlySalesCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ chart_data.quarterly.labels | tojson }},
+            datasets: createChartDatasets({{ chart_data | tojson }}, 'quarterly')
+        },
+        options: {
+            scales: {
+                x: { stacked: true },
+                y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Value (ETB)' } }
+            }
+        }
+    });
+
+    // Bi-Annual Sales Chart
+    const biAnnualSalesCtx = document.getElementById('biAnnualSalesChart').getContext('2d');
+    new Chart(biAnnualSalesCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ chart_data.bi_annual.labels | tojson }},
+            datasets: createChartDatasets({{ chart_data | tojson }}, 'bi_annual')
+        },
+        options: {
+            scales: {
+                x: { stacked: true },
+                y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Value (ETB)' } }
+            }
+        }
+    });
+
+    // Annual Sales Chart
+    const annualSalesCtx = document.getElementById('annualSalesChart').getContext('2d');
+    new Chart(annualSalesCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ chart_data.annual.labels | tojson }},
+            datasets: createChartDatasets({{ chart_data | tojson }}, 'annual')
+        },
+        options: {
+            scales: {
+                x: { stacked: true },
+                y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Value (ETB)' } }
+            }
+        }
+    });
+</script>
+{% endblock %}

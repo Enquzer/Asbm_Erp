@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Sales{% endblock %}
+{% block content %}
+<h1>Sales</h1>
+
+<!-- Navigation Tabs -->
+<ul class="nav nav-tabs" id="salesTabs" role="tablist">
+    <li class="nav-item">
+        <a class="nav-link active" id="record-tab" data-bs-toggle="tab" href="#record" role="tab">Record Sales</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="report-tab" data-bs-toggle="tab" href="#report" role="tab">Report</a>
+    </li>
+</ul>
+
+<div class="tab-content" id="salesTabContent">
+    <!-- Record Sales Tab -->
+    <div class="tab-pane fade show active" id="record" role="tabpanel">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Record New Sale</h5>
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="product_id" class="form-label">Product</label>
+                        <select class="form-select" id="product_id" name="product_id" required>
+                            <option value="">Select Product</option>
+                            {% for product in products %}
+                                <option value="{{ product.id }}">{{ product.name }} ({{ product.product_type }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sale_date" class="form-label">Sale Date</label>
+                        <input type="date" class="form-control" id="sale_date" name="sale_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Quantity Sold</label>
+                        <input type="number" step="0.01" class="form-control" id="quantity" name="quantity" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sale_type" class="form-label">Sale Type</label>
+                        <select class="form-select" id="sale_type" name="sale_type" required>
+                            <option value="Direct">Direct Sales</option>
+                            <option value="Service">Service Sales</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Record Sale</button>
+                </form>
+            </div>
+        </div>
+
+        <h2>Recorded Sales</h2>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Sale Date</th>
+                    <th>Quantity</th>
+                    <th>Total Price</th>
+                    <th>Sale Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in sales_data %}
+                <tr>
+                    <td>{{ sale.product.name }}</td>
+                    <td>{{ sale.sale_date }}</td>
+                    <td>{{ sale.quantity | round(2) }}</td>
+                    <td>{{ sale.total_price | round(2) }}</td>
+                    <td>{{ sale.sale_type }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Report Tab -->
+    <div class="tab-pane fade" id="report" role="tabpanel">
+        <a href="{{ url_for('sales.sales_report') }}" class="btn btn-primary mb-3">View Sales Report</a>
+    </div>
+</div>
+{% endblock %}

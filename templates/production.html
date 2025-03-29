@@ -1,0 +1,419 @@
+{% extends 'base.html' %}
+{% block title %}Production{% endblock %}
+{% block content %}
+    <h1 class="mb-4">Production</h1>
+
+    <!-- Debugging: Display passed variables -->
+    <div style="display: none;">
+        <p>DEBUG: setup_form exists: {{ setup_form is defined }}</p>
+        <p>DEBUG: form exists: {{ form is defined }}</p>
+        <p>DEBUG: active_tab: {{ active_tab }}</p>
+    </div>
+
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs mb-4" id="productionTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <a class="nav-link {% if active_tab == 'setup' %}active{% endif %}" id="setup-tab" data-bs-toggle="tab" href="#setup" role="tab" aria-controls="setup" aria-selected="{% if active_tab == 'setup' %}true{% else %}false{% endif %}">Setup</a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link {% if active_tab == 'production' %}active{% endif %}" id="production-tab" data-bs-toggle="tab" href="#production" role="tab" aria-controls="production" aria-selected="{% if active_tab == 'production' %}true{% else %}false{% endif %}">Production</a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link {% if active_tab == 'reporting' %}active{% endif %}" id="reporting-tab" data-bs-toggle="tab" href="#reporting" role="tab" aria-controls="reporting" aria-selected="{% if active_tab == 'reporting' %}true{% else %}false{% endif %}">Reporting</a>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="productionTabContent">
+        <!-- Setup Tab -->
+        <div class="tab-pane fade {% if active_tab == 'setup' %}show active{% endif %}" id="setup" role="tabpanel" aria-labelledby="setup-tab">
+            <h2>Production Setup</h2>
+            {% if setup_form is defined %}
+                <form method="POST" action="{{ url_for('production.production', tab='setup') }}" class="mb-4">
+                    {{ setup_form.hidden_tag() }}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ setup_form.name.label(class="form-label") }}
+                            {{ setup_form.name(class="form-control") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ setup_form.duty_station.label(class="form-label") }}
+                            {{ setup_form.duty_station(class="form-control") }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ setup_form.process_type.label(class="form-label") }}
+                            {{ setup_form.process_type(class="form-control") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ setup_form.installed_capacity.label(class="form-label") }}
+                            {{ setup_form.installed_capacity(class="form-control") }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ setup_form.efficiency_factor.label(class="form-label") }}
+                            {{ setup_form.efficiency_factor(class="form-control") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ setup_form.working_hours.label(class="form-label") }}
+                            {{ setup_form.working_hours(class="form-control") }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ setup_form.working_days.label(class="form-label") }}
+                            {{ setup_form.working_days(class="form-control") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ setup_form.manual_capacity.label(class="form-label") }}
+                            {{ setup_form.manual_capacity(class="form-control") }}
+                        </div>
+                    </div>
+                    {{ setup_form.submit(class="btn btn-primary") }}
+                </form>
+            {% else %}
+                <div class="alert alert-danger" role="alert">
+                    Setup form is not available. Please contact support.
+                </div>
+            {% endif %}
+            <h3>Machines</h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Duty Station</th>
+                        <th>Process Type</th>
+                        <th>Capacity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for machine in machines %}
+                        <tr>
+                            <td>{{ machine.name }}</td>
+                            <td>{{ machine.duty_station_name }}</td>
+                            <td>{{ machine.process_type }}</td>
+                            <td>{{ machine.installed_capacity }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Production Tab -->
+        <div class="tab-pane fade {% if active_tab == 'production' %}show active{% endif %}" id="production" role="tabpanel" aria-labelledby="production-tab">
+            <h2>Production Register</h2>
+            {% if form is defined %}
+                <form method="POST" action="{{ url_for('production.production', tab='production') }}" class="mb-4">
+                    {{ form.hidden_tag() }}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.machine.label(class="form-label") }}
+                            {{ form.machine(class="form-control") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.period_type.label(class="form-label") }}
+                            {{ form.period_type(class="form-control") }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.start_date.label(class="form-label") }}
+                            {{ form.start_date(class="form-control") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.end_date.label(class="form-label") }}
+                            {{ form.end_date(class="form-control") }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.actual_quantity.label(class="form-label") }}
+                            {{ form.actual_quantity(class="form-control") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.uom.label(class="form-label") }}
+                            {{ form.uom(class="form-control") }}
+                        </div>
+                    </div>
+                    {{ form.submit(class="btn btn-primary") }}
+                </form>
+            {% else %}
+                <div class="alert alert-danger" role="alert">
+                    Production form is not available. Please contact support.
+                </div>
+            {% endif %}
+            <h3>Production Records</h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Machine</th>
+                        <th>Period</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Quantity</th>
+                        <th>UoM</th>
+                        <th>Utilized Capacity (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in records %}
+                        <tr>
+                            <td>{{ record.machine_name }}</td>
+                            <td>{{ record.period_type }}</td>
+                            <td>{{ record.start_date }}</td>
+                            <td>{{ record.end_date }}</td>
+                            <td>{{ record.actual_quantity }}</td>
+                            <td>{{ record.uom }}</td>
+                            <td>{{ record.utilized_capacity }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Reporting Tab -->
+        <div class="tab-pane fade {% if active_tab == 'reporting' %}show active{% endif %}" id="reporting" role="tabpanel" aria-labelledby="reporting-tab">
+            <h2>Production Report ({{ period }})</h2>
+            <div class="d-flex justify-content-between mb-4">
+                <form method="GET" action="{{ url_for('production.production', tab='reporting') }}" class="d-flex align-items-center">
+                    <select name="period" class="form-select me-2" onchange="this.form.submit()">
+                        <option value="Daily" {% if period == 'Daily' %}selected{% endif %}>Daily</option>
+                        <option value="Weekly" {% if period == 'Weekly' %}selected{% endif %}>Weekly</option>
+                        <option value="Monthly" {% if period == 'Monthly' %}selected{% endif %}>Monthly</option>
+                        <option value="Quarterly" {% if period == 'Quarterly' %}selected{% endif %}>Quarterly</option>
+                        <option value="Semi-Annual" {% if period == 'Semi-Annual' %}selected{% endif %}>Semi-Annual</option>
+                    </select>
+                </form>
+                <div>
+                    <a href="{{ url_for('production.export_report', format='excel', period=period) }}" class="btn btn-success me-2" title="Export to Excel">
+                        <i class="bi bi-file-earmark-excel-fill"></i>
+                    </a>
+                    <a href="{{ url_for('production.export_report', format='pdf', period=period) }}" class="btn btn-danger" title="Export to PDF">
+                        <i class="bi bi-file-earmark-pdf-fill"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Date Range Filter for Donut Chart -->
+            <form method="GET" action="{{ url_for('production.production', tab='reporting') }}" class="mb-4">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="start_date" class="form-label">Start Date</label>
+                        <input type="date" name="start_date" id="start_date" class="form-control" value="{{ start_date if start_date else '' }}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" name="end_date" id="end_date" class="form-control" value="{{ end_date if end_date else '' }}">
+                    </div>
+                    <div class="col-md-4 mb-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary">Filter</button>
+                    </div>
+                </div>
+                <input type="hidden" name="period" value="{{ period }}">
+            </form>
+
+            <!-- Bar Graph: Planned vs Actual Production -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    Planned vs Actual Production by Process Type
+                </div>
+                <div class="card-body">
+                    <canvas id="productionBarChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Average Performance -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    Average Performance Across All Production Units
+                </div>
+                <div class="card-body">
+                    <h3 class="text-center">{{ average_performance|round(1) }}%</h3>
+                </div>
+            </div>
+
+            <!-- Production Performance Data Table -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    Production Performance Data by Individual Operations
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                {% for header in data[0] %}
+                                    <th>{{ header }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in data[1:] %}
+                                <tr>
+                                    {% for cell in row %}
+                                        <td>{{ cell }}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Donut Chart: Percent Contribution by Factory -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    Percent Contribution by Factory ({{ start_date }} to {{ end_date }})
+                </div>
+                <div class="card-body">
+                    <canvas id="factoryContributionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Summary Table -->
+            <div class="card">
+                <div class="card-header">
+                    Summary by Duty Station
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Factory</th>
+                                <th>Plan</th>
+                                <th>Actual</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for factory, values in summary.items() %}
+                                <tr>
+                                    <td>{{ factory }}</td>
+                                    <td>{{ values.plan }}</td>
+                                    <td>{{ values.actual }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <!-- Include Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Bar Chart: Planned vs Actual Production
+        const productionBarChart = new Chart(document.getElementById('productionBarChart'), {
+            type: 'bar',
+            data: {
+                labels: {{ process_types|tojson }},
+                datasets: [
+                    {
+                        label: 'Planned',
+                        data: {{ planned_values|tojson }},
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Actual',
+                        data: {{ actual_values|tojson }},
+                        backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: '% Capacity Utilization',
+                        data: {{ perf_values|tojson }},
+                        type: 'line',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2,
+                        fill: false,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Production (Units)'
+                        }
+                    },
+                    y1: {
+                        position: 'right',
+                        beginAtZero: true,
+                        max: 200,
+                        title: {
+                            display: true,
+                            text: '% Capacity Utilization'
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Process Type'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Planned vs Actual Production'
+                    }
+                }
+            }
+        });
+
+        // Donut Chart: Percent Contribution by Factory
+        const factoryContributionChart = new Chart(document.getElementById('factoryContributionChart'), {
+            type: 'doughnut',
+            data: {
+                labels: {{ factory_labels|tojson }},
+                datasets: [{
+                    label: 'Contribution (%)',
+                    data: {{ factory_contributions|tojson }},
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(75, 192, 192, 0.6)',
+                        'rgba(153, 102, 255, 0.6)',
+                        'rgba(255, 159, 64, 0.6)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Percent Contribution by Factory'
+                    }
+                }
+            }
+        });
+    </script>
+{% endblock %}

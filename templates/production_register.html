@@ -1,0 +1,56 @@
+<h2>Production Register</h2>
+{% if form is defined %}
+    <form method="POST" action="{{ url_for('production.production', tab='production') }}">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.machine.label(class="form-label") }} {{ form.machine(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.period_type.label(class="form-label") }} {{ form.period_type(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.start_date.label(class="form-label") }} {{ form.start_date(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.end_date.label(class="form-label") }} {{ form.end_date(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.actual_quantity.label(class="form-label") }} {{ form.actual_quantity(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.uom.label(class="form-label") }} {{ form.uom(class="form-control") }}
+        </div>
+        {{ form.submit(class="btn btn-primary") }}
+    </form>
+{% else %}
+    <div class="alert alert-danger" role="alert">
+        Production form is not available. Please contact support.
+    </div>
+{% endif %}
+<h3>Production Records</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Machine</th>
+            <th>Period</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Quantity</th>
+            <th>UoM</th>
+            <th>Utilized Capacity (%)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for record in records %}
+            <tr>
+                <td>{{ record.machine_name }}</td>
+                <td>{{ record.period_type }}</td>
+                <td>{{ record.start_date }}</td>
+                <td>{{ record.end_date }}</td>
+                <td>{{ record.actual_quantity }}</td>
+                <td>{{ record.uom }}</td>
+                <td>{{ record.utilized_capacity }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>

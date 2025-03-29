@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASBM ERP - Production</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    
+    <style>
+        body.night-mode {
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        body.night-mode .bg-dark {
+            background-color: #333 !important;
+        }
+        body.night-mode .navbar-nav .nav-link {
+            color: #e0e0e0;
+        }
+        body.night-mode .navbar-nav .nav-link:hover {
+            color: #fff;
+        }
+        body.night-mode .btn-outline-light {
+            color: #e0e0e0;
+            border-color: #e0e0e0;
+        }
+        body.night-mode .btn-outline-light:hover {
+            color: #fff;
+            background-color: #555;
+        }
+        :root {
+            --font-size: 16px;
+            --theme-color: #2c3e50;
+            --font-color: #ffffff;
+        }
+        body {
+            font-size: var(--font-size);
+            color: var(--font-color);
+        }
+        .navbar {
+            background-color: var(--theme-color);
+        }
+        .bg-dark {
+            background-color: var(--theme-color) !important;
+        }
+        .navbar-nav .nav-link,
+        .navbar-brand,
+        .dropdown-menu,
+        .dropdown-item,
+        .btn-outline-light {
+            color: var(--font-color);
+        }
+        .navbar-nav .nav-link:hover,
+        .navbar-brand:hover,
+        .dropdown-item:hover,
+        .btn-outline-light:hover {
+            color: var(--font-color);
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/dashboard/">ASBM ERP</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link " href="/dashboard/">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/order/orders">Orders</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/product/products">Products</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/product/customers">Customers</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/hr/">HR</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/notifications/">Notifications</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/planning/">Planning</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/production/production">Production</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/project/">Project</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/purchasing/">Purchasing</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/stock_management/">Stock Management</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/sales/">Sales</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/system_setup/">System Setup</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/user_management/login">User Management</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/chat/">Chat</a>
+                    </li>
+                </ul>
+                <div class="d-flex align-items-center">
+                    
+                        <div class="dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span id="user-name">admin</span> (1) <span class="badge bg-secondary" id="notification-badge">1</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#" id="settings">Settings <span class="text-muted">⚙️</span></a></li>
+                                <li><a class="dropdown-item" href="#" id="notification-bell">Notifications <span class="text-muted">🔔</span></a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="/user_management/logout">Logout</a></li>
+                            </ul>
+                        </div>
+                        <span id="theme-toggle" class="ms-3" title="Toggle Theme">🌙</span>
+                    
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        
+            
+        
+        
+    <h1 class="mb-4">Production</h1>
+
+    <!-- Debugging: Display passed variables -->
+    <div style="display: none;">
+        <p>DEBUG: setup_form exists: True</p>
+        <p>DEBUG: form exists: True</p>
+        <p>DEBUG: active_tab: reporting</p>
+    </div>
+
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs mb-4" id="productionTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <a class="nav-link " id="setup-tab" data-bs-toggle="tab" href="#setup" role="tab" aria-controls="setup" aria-selected="false">Setup</a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link " id="production-tab" data-bs-toggle="tab" href="#production" role="tab" aria-controls="production" aria-selected="false">Production</a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link active" id="reporting-tab" data-bs-toggle="tab" href="#reporting" role="tab" aria-controls="reporting" aria-selected="true">Reporting</a>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="productionTabContent">
+        <!-- Setup Tab -->
+        <div class="tab-pane fade " id="setup" role="tabpanel" aria-labelledby="setup-tab">
+            <h2>Production Setup</h2>
+            
+                <form method="POST" action="/production/production?tab=setup" class="mb-4">
+                    <input id="csrf_token" name="csrf_token" type="hidden" value="ImUyYTQxNDFjZjA3ZDllMzBiYjFjNmVjNzUxYWVhOThjM2MxMGMwYTMi.Z9sobg.BUQDGLrlTuDl4SavuIZ0GiICZnc">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="name">Machine Name</label>
+                            <input class="form-control" id="name" name="name" required type="text" value="">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="duty_station">Duty Station</label>
+                            <select class="form-control" id="duty_station" name="duty_station"></select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="process_type">Process Type</label>
+                            <select class="form-control" id="process_type" name="process_type"><option value="Spinning">Spinning</option><option value="Knitting">Knitting</option><option value="Dyeing">Dyeing</option><option value="Weaving">Weaving</option><option value="Printing">Printing</option><option value="Garment">Garment</option><option value="Denim">Denim</option></select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="installed_capacity">Installed Capacity</label>
+                            <input class="form-control" id="installed_capacity" name="installed_capacity" required type="text" value="">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="efficiency_factor">Efficiency Factor (0-1)</label>
+                            <input class="form-control" id="efficiency_factor" name="efficiency_factor" type="text" value="0.8">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="working_hours">Working Hours/Day</label>
+                            <input class="form-control" id="working_hours" name="working_hours" type="text" value="8.0">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="working_days">Working Days/Period</label>
+                            <input class="form-control" id="working_days" name="working_days" type="number" value="25">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="manual_capacity">Manual Capacity (Optional)</label>
+                            <input class="form-control" id="manual_capacity" name="manual_capacity" type="text" value="">
+                        </div>
+                    </div>
+                    <input class="btn btn-primary" id="submit" name="submit" type="submit" value="Save Machine">
+                </form>
+            
+            <h3>Machines</h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Duty Station</th>
+                        <th>Process Type</th>
+                        <th>Capacity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Production Tab -->
+        <div class="tab-pane fade " id="production" role="tabpanel" aria-labelledby="production-tab">
+            <h2>Production Register</h2>
+            
+                <form method="POST" action="/production/production?tab=production" class="mb-4">
+                    <input id="csrf_token" name="csrf_token" type="hidden" value="ImUyYTQxNDFjZjA3ZDllMzBiYjFjNmVjNzUxYWVhOThjM2MxMGMwYTMi.Z9sobg.BUQDGLrlTuDl4SavuIZ0GiICZnc">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="machine">Machine</label>
+                            <select class="form-control" id="machine" name="machine"></select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="period_type">Period</label>
+                            <select class="form-control" id="period_type" name="period_type"><option value="Daily">Daily</option><option value="Weekly">Weekly</option><option value="Monthly">Monthly</option><option value="Quarterly">Quarterly</option><option value="Semi-Annual">Semi-Annual</option></select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="start_date">Start Date</label>
+                            <input class="form-control" id="start_date" name="start_date" required type="date" value="">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="end_date">End Date</label>
+                            <input class="form-control" id="end_date" name="end_date" required type="date" value="">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="actual_quantity">Actual Quantity</label>
+                            <input class="form-control" id="actual_quantity" name="actual_quantity" required type="text" value="">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="uom">Unit</label>
+                            <select class="form-control" id="uom" name="uom"><option value="Kg">Kg</option><option value="Pcs">Pcs</option></select>
+                        </div>
+                    </div>
+                    <input class="btn btn-primary" id="submit" name="submit" type="submit" value="Register Production">
+                </form>
+            
+            <h3>Production Records</h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Machine</th>
+                        <th>Period</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Quantity</th>
+                        <th>UoM</th>
+                        <th>Utilized Capacity (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Reporting Tab -->
+        <div class="tab-pane fade show active" id="reporting" role="tabpanel" aria-labelledby="reporting-tab">
+            <h2>Production Report (Monthly)</h2>
+            <div class="d-flex justify-content-between mb-4">
+                <form method="GET" action="/production/production?tab=reporting" class="d-flex align-items-center">
+                    <select name="period" class="form-select me-2" onchange="this.form.submit()">
+                        <option value="Daily" >Daily</option>
+                        <option value="Weekly" >Weekly</option>
+                        <option value="Monthly" selected>Monthly</option>
+                        <option value="Quarterly" >Quarterly</option>
+                        <option value="Semi-Annual" >Semi-Annual</option>
+                    </select>
+                </form>
+                <div>
+                    <a href="/production/production/export/excel?period=Monthly" class="btn btn-success me-2" title="Export to Excel">
+                        <i class="bi bi-file-earmark-excel-fill"></i>
+                    </a>
+                    <a href="/production/production/export/pdf?period=Monthly" class="btn btn-danger" title="Export to PDF">
+                        <i class="bi bi-file-earmark-pdf-fill"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Date Range Filter for Donut Chart -->
+            <form method="GET" action="/production/production?tab=reporting" class="mb-4">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="start_date" class="form-label">Start Date</label>
+                        <input type="date" name="start_date" id="start_date" class="form-control" value="">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" name="end_date" id="end_date" class="form-control" value="">
+                    </div>
+                    <div class="col-md-4 mb-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary">Filter</button>
+                    </div>
+                </div>
+                <input type="hidden" name="period" value="Monthly">
+            </form>
+
+            <!-- Bar Graph: Planned vs Actual Production -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    Planned vs Actual Production by Process Type
+                </div>
+                <div class="card-body">
+                    <canvas id="productionBarChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Average Performance -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    Average Performance Across All Production Units
+                </div>
+                <div class="card-body">
+                    <h3 class="text-center">0.5%</h3>
+                </div>
+            </div>
+
+            <!-- Production Performance Data Table -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    Production Performance Data by Individual Operations
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                
+                                    <th>Factory</th>
+                                
+                                    <th>Cost Center</th>
+                                
+                                    <th>UoM</th>
+                                
+                                    <th>Plan</th>
+                                
+                                    <th>Actual</th>
+                                
+                                    <th>% Perf</th>
+                                
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                                <tr>
+                                    
+                                        <td>Sendafa</td>
+                                    
+                                        <td>Spinning</td>
+                                    
+                                        <td>Kg</td>
+                                    
+                                        <td>160000.0</td>
+                                    
+                                        <td>800.0</td>
+                                    
+                                        <td>0.5</td>
+                                    
+                                </tr>
+                            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Donut Chart: Percent Contribution by Factory -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    Percent Contribution by Factory (None to None)
+                </div>
+                <div class="card-body">
+                    <canvas id="factoryContributionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Summary Table -->
+            <div class="card">
+                <div class="card-header">
+                    Summary by Duty Station
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Factory</th>
+                                <th>Plan</th>
+                                <th>Actual</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                                <tr>
+                                    <td>Sendafa</td>
+                                    <td>160000.0</td>
+                                    <td>800.0</td>
+                                </tr>
+                            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <div id="settings-panel" class="bg-light p-3 rounded shadow" style="display: none; position: absolute; right: 20px; top: 60px; z-index: 1000;">
+        <form id="settings-form">
+            <div class="mb-3">
+                <label for="font-size-slider" class="form-label">Font Size:</label>
+                <input type="range" class="form-range" id="font-size-slider" min="12" max="20" step="1" value="16">
+            </div>
+            <div class="mb-3">
+                <label for="theme-color-picker" class="form-label">Theme Color:</label>
+                <input type="color" class="form-control form-control-color" id="theme-color-picker" value="#2c3e50">
+            </div>
+            <div class="mb-3">
+                <label for="font-color-picker" class="form-label">Font Color:</label>
+                <input type="color" class="form-control form-control-color" id="font-color-picker" value="#ffffff">
+            </div>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/script.js"></script>
+    
+    <!-- Include Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Bar Chart: Planned vs Actual Production
+        const productionBarChart = new Chart(document.getElementById('productionBarChart'), {
+            type: 'bar',
+            data: {
+                labels: ["Spinning"],
+                datasets: [
+                    {
+                        label: 'Planned',
+                        data: [160000.0],
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Actual',
+                        data: [800.0],
+                        backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: '% Capacity Utilization',
+                        data: [0.5],
+                        type: 'line',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2,
+                        fill: false,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Production (Units)'
+                        }
+                    },
+                    y1: {
+                        position: 'right',
+                        beginAtZero: true,
+                        max: 200,
+                        title: {
+                            display: true,
+                            text: '% Capacity Utilization'
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Process Type'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Planned vs Actual Production'
+                    }
+                }
+            }
+        });
+
+        // Donut Chart: Percent Contribution by Factory
+        const factoryContributionChart = new Chart(document.getElementById('factoryContributionChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ["Sendafa"],
+                datasets: [{
+                    label: 'Contribution (%)',
+                    data: [100.0],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(75, 192, 192, 0.6)',
+                        'rgba(153, 102, 255, 0.6)',
+                        'rgba(255, 159, 64, 0.6)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Percent Contribution by Factory'
+                    }
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>

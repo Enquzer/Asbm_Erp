@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Edit Order{% endblock %}
+{% block content %}
+<h1>Edit Order - {{ order.order_number }}</h1>
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="flash-message {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="product_id">Product:</label>
+    <select name="product_id" id="product_id" required>
+        {% for product in products %}
+            <option value="{{ product.id }}" {% if product.id == order.product_id %}selected{% endif %}>{{ product.name }} ({{ product.product_code }})</option>
+        {% endfor %}
+    </select>
+
+    <label for="customer_id">Customer:</label>
+    <select name="customer_id" id="customer_id" required>
+        {% for customer in customers %}
+            <option value="{{ customer.id }}" {% if customer.id == order.customer_id %}selected{% endif %}>{{ customer.name }}</option>
+        {% endfor %}
+    </select>
+
+    <label for="quantity">Quantity:</label>
+    <input type="number" name="quantity" id="quantity" value="{{ order.quantity }}" min="1" required>
+
+    <label for="order_placed_date">Order Placed Date:</label>
+    <input type="date" name="order_placed_date" id="order_placed_date" value="{{ order.order_placed_date }}" required>
+
+    <label for="required_delivery_date">Required Delivery Date:</label>
+    <input type="date" name="required_delivery_date" id="required_delivery_date" value="{{ order.required_delivery_date }}" required>
+
+    <label for="delivery_info">Delivery Info:</label>
+    <textarea name="delivery_info" id="delivery_info">{{ order.delivery_info or '' }}</textarea>
+
+    <input type="submit" value="Update Order">
+</form>
+<a href="{{ url_for('order.order_list') }}">Back to Orders</a>
+<style>
+    form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    label {
+        font-size: 14px;
+        color: #34495e;
+        font-weight: 600;
+    }
+    select, input[type="number"], input[type="date"], textarea {
+        padding: 10px;
+        font-size: 14px;
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        background: #fff;
+        color: #34495e;
+        width: 100%;
+        max-width: 400px;
+        box-sizing: border-box;
+        transition: border-color 0.3s ease;
+    }
+    select:focus, input:focus, textarea:focus {
+        border-color: #3498db;
+        outline: none;
+    }
+    input[type="submit"] {
+        background: #3498db;
+        color: #fff;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        width: 150px;
+        transition: background 0.3s ease;
+    }
+    input[type="submit"]:hover {
+        background: #2980b9;
+    }
+    .flash-message {
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+    }
+    .flash-message.error {
+        background: #fadbd8;
+        color: #c0392b;
+    }
+    .flash-message.success {
+        background: #d4efdf;
+        color: #27ae60;
+    }
+    a {
+        color: #3498db;
+        text-decoration: none;
+        font-size: 14px;
+        margin-top: 15px;
+        display: inline-block;
+        transition: color 0.3s ease;
+    }
+    a:hover {
+        color: #2980b9;
+    }
+</style>
+{% endblock %}

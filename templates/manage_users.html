@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Manage Users{% endblock %}
+{% block content %}
+    <h1 class="text-center mb-4"><i class="fas fa-user-cog me-2"></i>Manage Users</h1>
+    <div class="card mb-4">
+        <div class="card-body">
+            <a href="{{ url_for('user_management.register') }}" class="btn btn-success mb-3"><i class="fas fa-plus me-1"></i>Add New User</a>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Profile Picture</th>
+                            <th>Permissions</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                            <tr>
+                                <td>{{ user.id }}</td>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.role }}</td>
+                                <td>
+                                    <img src="{{ url_for('static', filename='images/uploads/' + (user.profile_picture or 'placeholder_user.jpg')) }}" alt="Profile" style="width: 40px; height: 40px; border-radius: 50%;">
+                                </td>
+                                <td>
+                                    <form method="POST">
+                                        {{ form.hidden_tag() }}
+                                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                                        <input type="hidden" name="action" value="update_permissions">
+                                        {% for module in modules %}
+                                            <div class="form-check form-check-inline">
+                                                <input type="checkbox" name="{{ module }}_view" id="{{ user.id }}_{{ module }}_view" {% if user.permissions.get(module, {}).get('view', False) %}checked{% endif %}>
+                                                <label for="{{ user.id }}_{{ module }}_view">V</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input type="checkbox" name="{{ module }}_edit" id="{{ user.id }}_{{ module }}_edit" {% if user.permissions.get(module, {}).get('edit', False) %}checked{% endif %}>
+                                                <label for="{{ user.id }}_{{ module }}_edit">E</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input type="checkbox" name="{{ module }}_delete" id="{{ user.id }}_{{ module }}_delete" {% if user.permissions.get(module, {}).get('delete', False) %}checked{% endif %}>
+                                                <label for="{{ user.id }}_{{ module }}_delete">D</label>
+                                            </div>
+                                            <small>{{ module|capitalize }}</small><br>
+                                        {% endfor %}
+                                        <button type="submit" class="btn btn-sm btn-primary mt-2"><i class="fas fa-save"></i> Save</button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form method="POST" style="display:inline;">
+                                        {{ form.hidden_tag() }}
+                                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                                        <input type="hidden" name="action" value="delete">
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');"><i class="fas fa-trash"></i> Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Order Details - {{ order.order_number }}{% endblock %}
+{% block content %}
+<h1>Order Details - {{ order.order_number }}</h1>
+
+<div class="status-tracker">
+    {% set statuses = ['Placed', 'Packed', 'Shipped', 'Delivered'] %}
+    {% for i in range(statuses|length) %}
+        <div class="status-step {% if order.order_status == statuses[i] or (i < statuses.index(order.order_status)) %}active{% endif %}">
+            <div class="status-circle {% if order.order_status == statuses[i] or (i < statuses.index(order.order_status)) %}active{% endif %}">
+                {{ i + 1 }}
+            </div>
+            <div class="status-label">{{ statuses[i] }}</div>
+            {% if i < statuses|length - 1 %}
+                <div class="status-line {% if i < statuses.index(order.order_status) %}completed{% endif %}"></div>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>
+
+<div class="details-section">
+    <p><strong>Customer:</strong> {{ order.customer.name }}</p>
+    <p><strong>Product:</strong> {{ order.product.name }}</p>
+    <p><strong>Quantity:</strong> {{ order.quantity }}</p>
+    <p><strong>Tax:</strong> {{ order.tax }} ETB</p>
+    <p><strong>Total:</strong> {{ order.total }} ETB</p>
+    <p><strong>Payment Status:</strong> {{ order.payment_status }}</p>
+    <p><strong>Order Status:</strong> {{ order.order_status }}</p>
+    <p><strong>Delivery Info:</strong> {{ order.delivery_info or 'N/A' }}</p>
+    <p><strong>Order Placed Date:</strong> {{ order.order_placed_date or 'N/A' }}</p>
+    <p><strong>Required Delivery Date:</strong> {{ order.required_delivery_date or 'N/A' }}</p>
+</div>
+
+<h2>Update Status</h2>
+<form method="POST" action="{{ url_for('order.update_status', order_id=order.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="order_status">Order Status:</label>
+    <select name="order_status" id="order_status">
+        <option value="Placed" {% if order.order_status == 'Placed' %}selected{% endif %}>Placed</option>
+        <option value="Packed" {% if order.order_status == 'Packed' %}selected{% endif %}>Packed</option>
+        <option value="Shipped" {% if order.order_status == 'Shipped' %}selected{% endif %}>Shipped</option>
+        <option value="Delivered" {% if order.order_status == 'Delivered' %}selected{% endif %}>Delivered</option>
+    </select><br><br>
+
+    <label for="payment_status">Payment Status:</label>
+    <select name="payment_status" id="payment_status">
+        <option value="Pending" {% if order.payment_status == 'Pending' %}selected{% endif %}>Pending</option>
+        <option value="Paid" {% if order.payment_status == 'Paid' %}selected{% endif %}>Paid</option>
+    </select><br><br>
+
+    <input type="submit" value="Update Status">
+</form>
+
+<a href="{{ url_for('order.order_list') }}">Back to Orders</a>
+<style>
+    .status-tracker {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 20px 0;
+        padding: 20px;
+        background: #ecf0f1;
+        border-radius: 8px;
+    }
+    .status-step {
+        text-align: center;
+        position: relative;
+        flex: 1;
+    }
+    .status-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background-color: #bdc3c7;
+        color: #fff;
+        font-size: 18px;
+        font-weight: bold;
+        line-height: 50px;
+        margin: 0 auto;
+        transition: all 0.3s ease;
+        z-index: 2;
+    }
+    .status-circle.active {
+        background-color: #27ae60;
+        box-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
+    }
+    .status-label {
+        font-size: 14px;
+        color: #7f8c8d;
+        margin-top: 8px;
+        transition: color 0.3s ease;
+    }
+    .status-step.active .status-label {
+        color: #27ae60;
+        font-weight: 600;
+    }
+    .status-line {
+        position: absolute;
+        top: 25px;
+        left: 50%;
+        width: calc(100% - 50px);
+        height: 2px;
+        background: repeating-linear-gradient(to right, #bdc3c7, #bdc3c7 4px, transparent 4px, transparent 8px);
+        z-index: 1;
+    }
+    .status-line.completed {
+        background: #27ae60;
+        height: 3px;
+    }
+    .details-section p {
+        font-size: 16px;
+        margin: 10px 0;
+        padding: 10px;
+        background: #f9fbfc;
+        border-radius: 6px;
+        border-left: 4px solid #3498db;
+    }
+    .details-section strong {
+        color: #2c3e50;
+        font-weight: 600;
+    }
+    h2 {
+        font-size: 22px;
+        color: #2c3e50;
+        margin: 20px 0 15px;
+    }
+    form {
+        background: #ecf0f1;
+        padding: 20px;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    label {
+        font-size: 14px;
+        color: #34495e;
+    }
+    select {
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        background: #fff;
+        color: #34495e;
+        cursor: pointer;
+        width: 200px;
+        transition: border-color 0.3s ease;
+    }
+    select:focus {
+        border-color: #3498db;
+        outline: none;
+    }
+    input[type="submit"] {
+        background: #3498db;
+        color: #fff;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        width: 150px;
+        transition: background 0.3s ease;
+    }
+    input[type="submit"]:hover {
+        background: #2980b9;
+    }
+    a {
+        color: #3498db;
+        text-decoration: none;
+        font-size: 14px;
+        margin-top: 15px;
+        display: inline-block;
+        transition: color 0.3s ease;
+    }
+    a:hover {
+        color: #2980b9;
+    }
+</style>
+{% endblock %}

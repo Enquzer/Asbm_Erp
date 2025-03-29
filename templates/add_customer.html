@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Add/Edit Customer{% endblock %}
+{% block content %}
+    <h1 class="mb-4">{% if customer %}Edit Customer{% else %}Add Customer{% endif %}</h1>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="POST" action="{% if customer %}{{ url_for('product.edit_customer', customer_id=customer.id) }}{% else %}{{ url_for('product.add_customer') }}{% endif %}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Customer Name</label>
+                    <input type="text" class="form-control" id="name" name="name" value="{{ customer.name if customer else '' }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" value="{{ customer.email if customer else '' }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="product_types" class="form-label">Product Types (comma-separated)</label>
+                    <input type="text" class="form-control" id="product_types" name="product_types" value="{{ customer.product_types if customer else '' }}" placeholder="e.g., Garment,Knitted">
+                </div>
+                <div class="mb-3">
+                    <label for="contact_details" class="form-label">Contact Details</label>
+                    <textarea class="form-control" id="contact_details" name="contact_details" placeholder="e.g., email:abc@xyz.com, phone:1234567890">{{ customer.contact_details if customer else '' }}</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">{% if customer %}Update{% else %}Add{% endif %} Customer</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

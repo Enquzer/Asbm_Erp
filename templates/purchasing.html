@@ -1,0 +1,626 @@
+{% extends 'base.html' %}
+{% block title %}Purchasing{% endblock %}
+{% block content %}
+    <h1 class="mb-4">Purchasing</h1>
+    <ul class="nav nav-tabs" id="purchasingTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" id="fulfill-tab" data-bs-toggle="tab" href="#fulfill" role="tab">Fulfill Requests <span class="badge bg-danger">{{ new_requests_count }}</span></a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="register-tab" data-bs-toggle="tab" href="#register" role="tab">Register New Purchase</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="suppliers-tab" data-bs-toggle="tab" href="#suppliers" role="tab">Suppliers</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="payables-tab" data-bs-toggle="tab" href="#payables" role="tab">Payables</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="report-tab" data-bs-toggle="tab" href="#report" role="tab">Reporting</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="plan-tab" data-bs-toggle="tab" href="#plan" role="tab">Yearly Plan</a>
+        </li>
+    </ul>
+
+    <div class="tab-content mt-3" id="purchasingTabContent">
+        <!-- Tab 1: Fulfill Purchase Requests -->
+        <div class="tab-pane fade show active" id="fulfill" role="tabpanel">
+            <h5>Fulfill Purchase Requests</h5>
+            {% if requests %}
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Request Code</th>
+                            <th>Item Name</th>
+                            <th>Department</th>
+                            <th>Description</th>
+                            <th>Quantity</th>
+                            <th>Expected Delivery</th>
+                            <th>Status</th>
+                            <th>Requested By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in requests %}
+                            <tr>
+                                <td>{{ req.request_code }}</td>
+                                <td>{{ req.item_name }}</td>
+                                <td>{{ req.dept_name }}</td>
+                                <td>{{ req.description or 'N/A' }}</td>
+                                <td>{{ req.quantity }} {{ req.unit_of_measure }}</td>
+                                <td>{{ req.expected_delivery_date }}</td>
+                                <td>
+                                    {% if req.status == "Pending" %}
+                                        <i class="bi bi-hourglass-split text-warning" title="Pending"></i> {{ req.status }}
+                                    {% else %}
+                                        <i class="bi bi-check-circle-fill text-success" title="Fulfilled"></i> {{ req.status }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ req.requested_by.username }} on {{ req.created_at }}</td>
+                                <td>
+                                    {% if req.status == "Pending" %}
+                                        <form action="{{ url_for('purchasing.fulfill_request', request_id=req.id) }}" method="POST" class="row g-2 align-items-center">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <div class="col-auto">
+                                                <input type="text" class="form-control form-control-sm" name="order_number" placeholder="Order #" style="width: 100px;">
+                                            </div>
+                                            <div class="col-auto">
+                                                <select class="form-select form-select-sm" name="product_id" style="width: 120px;">
+                                                    <option value="">Select Product</option>
+                                                    {% for product in products %}
+                                                        <option value="{{ product.id }}">{{ product.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col-auto">
+                                                <input type="text" class="form-control form-control-sm" name="supplier_name" placeholder="Supplier" required style="width: 120px;">
+                                            </div>
+                                            <div class="col-auto">
+                                                <input type="number" class="form-control form-control-sm" name="total_price" step="0.01" placeholder="Price" required style="width: 100px;">
+                                            </div>
+                                            <div class="col-auto">
+                                                <button type="submit" class="btn btn-success btn-sm">Fulfill</button>
+                                            </div>
+                                        </form>
+                                    {% else %}
+                                        <span class="text-muted">Fulfilled</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No purchase requests available.</p>
+            {% endif %}
+        </div>
+
+        <!-- Tab 2: Register New Purchase -->
+        <div class="tab-pane fade" id="register" role="tabpanel">
+            <h5>Register New Purchase</h5>
+            <form action="{{ url_for('purchasing.register_purchase') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label>Order Number</label>
+                        <input type="text" class="form-control" name="order_number" placeholder="Auto-generated if blank">
+                    </div>
+                    <div class="col-md-3">
+                        <label>Description</label>
+                        <input type="text" class="form-control" name="description" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Category</label>
+                        <select class="form-select" name="cost_category" required>
+                            {% for cat in cost_categories %}
+                                <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Supplier</label>
+                        <input type="text" class="form-control" id="supplier_name" name="supplier_name" autocomplete="off" required>
+                        <div id="supplier_suggestions" class="dropdown-menu"></div>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Duty Station</label>
+                        <select class="form-select" name="duty_station_id" required>
+                            {% for ds in duty_stations %}
+                                <option value="{{ ds.id }}">{{ ds.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Cost Type</label>
+                        <select class="form-select" name="cost_type">
+                            <option value="Project Cost">Project Cost</option>
+                            <option value="Operational Cost">Operational Cost</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Total Price</label>
+                        <input type="number" class="form-control" name="total_price" step="0.01" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Payment Status</label>
+                        <select class="form-select" name="payment_status">
+                            <option value="Unpaid">Unpaid</option>
+                            <option value="Partially Paid">Partially Paid</option>
+                            <option value="Paid">Paid</option>
+                            <option value="Credit">Credit</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Payment Amount</label>
+                        <input type="number" class="form-control" name="payment_amount" step="0.01" value="0">
+                    </div>
+                    <div class="col-md-3">
+                        <label>Payment Date</label>
+                        <input type="date" class="form-control" name="payment_date">
+                    </div>
+                    <div class="col-md-3">
+                        <label>Quantity</label>
+                        <input type="number" class="form-control" name="quantity" value="1" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Unit of Measure</label>
+                        <select class="form-select" name="unit_of_measure" required>
+                            <option value="Pieces">Pieces</option>
+                            <option value="Kg">Kg</option>
+                            <option value="Liters">Liters</option>
+                            <option value="Meters">Meters</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12">
+                        <button type="submit" class="btn btn-primary">Register</button>
+                        <a href="{{ url_for('purchasing.export_purchases', format='excel') }}" class="btn btn-sm btn-success"><i class="fas fa-file-excel"></i> Excel</a>
+                        <a href="{{ url_for('purchasing.export_purchases', format='pdf') }}" class="btn btn-sm btn-danger"><i class="fas fa-file-pdf"></i> PDF</a>
+                    </div>
+                </div>
+            </form>
+            <h5 class="mt-4">Registered Purchases</h5>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Order Number</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Supplier</th>
+                        <th>Duty Station</th>
+                        <th>Quantity</th>
+                        <th>Unit</th>
+                        <th>Total Price</th>
+                        <th>Payment Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in procurement_orders %}
+                        <tr>
+                            <td>{{ order.order_number }}</td>
+                            <td>{{ order.description }}</td>
+                            <td>{{ order.cost_category }}</td>
+                            <td>{{ order.supplier.name if order.supplier else 'N/A' }}</td>
+                            <td>{{ order.duty_station.name if order.duty_station else 'N/A' }}</td>
+                            <td>{{ order.quantity }}</td>
+                            <td>{{ order.unit_of_measure }}</td>
+                            <td>{{ order.total_price | format_currency }}</td>
+                            <td>{{ order.payment_status }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Tab 3: Suppliers -->
+        <div class="tab-pane fade" id="suppliers" role="tabpanel">
+            <h5>Register Supplier</h5>
+            <form action="{{ url_for('purchasing.register_supplier') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label>Name</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Contact Name</label>
+                        <input type="text" class="form-control" name="contact_name">
+                    </div>
+                    <div class="col-md-3">
+                        <label>Phone</label>
+                        <input type="text" class="form-control" name="phone">
+                    </div>
+                    <div class="col-md-3">
+                        <label>Email</label>
+                        <input type="email" class="form-control" name="email">
+                    </div>
+                    <div class="col-md-3">
+                        <label>Location</label>
+                        <input type="text" class="form-control" name="location">
+                    </div>
+                    <div class="col-md-3">
+                        <label>Supplied Items</label>
+                        <input type="text" class="form-control" name="supplied_items" placeholder="e.g., Raw Material, Spare Parts">
+                    </div>
+                    <div class="col-md-3">
+                        <label>Rating (0-5)</label>
+                        <input type="number" class="form-control" name="rating" min="0" max="5" step="0.1" value="0">
+                    </div>
+                    <div class="col-md-12">
+                        <button type="submit" class="btn btn-primary">Register Supplier</button>
+                        <a href="{{ url_for('purchasing.export_suppliers', format='excel') }}" class="btn btn-sm btn-success"><i class="fas fa-file-excel"></i> Excel</a>
+                        <a href="{{ url_for('purchasing.export_suppliers', format='pdf') }}" class="btn btn-sm btn-danger"><i class="fas fa-file-pdf"></i> PDF</a>
+                    </div>
+                </div>
+            </form>
+            <h5 class="mt-4">Supplier List</h5>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Contact Name</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Location</th>
+                        <th>Supplied Items</th>
+                        <th>Rating</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for supplier in suppliers %}
+                        <tr>
+                            <td>{{ supplier.name }}</td>
+                            <td>{{ supplier.contact_name or 'N/A' }}</td>
+                            <td>{{ supplier.phone or 'N/A' }}</td>
+                            <td>{{ supplier.email or 'N/A' }}</td>
+                            <td>{{ supplier.location or 'N/A' }}</td>
+                            <td>{{ supplier.supplied_items or 'N/A' }}</td>
+                            <td>{{ supplier.rating }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modifySupplierModal{{ supplier.id }}">Modify</button>
+                                <form action="{{ url_for('purchasing.delete_supplier', supplier_id=supplier.id) }}" method="POST" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% for supplier in suppliers %}
+                <div class="modal fade" id="modifySupplierModal{{ supplier.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form action="{{ url_for('purchasing.modify_supplier', supplier_id=supplier.id) }}" method="POST">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Modify Supplier</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <div class="mb-3">
+                                        <label>Name</label>
+                                        <input type="text" class="form-control" name="name" value="{{ supplier.name }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label>Contact Name</label>
+                                        <input type="text" class="form-control" name="contact_name" value="{{ supplier.contact_name or '' }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label>Phone</label>
+                                        <input type="text" class="form-control" name="phone" value="{{ supplier.phone or '' }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label>Email</label>
+                                        <input type="email" class="form-control" name="email" value="{{ supplier.email or '' }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label>Location</label>
+                                        <input type="text" class="form-control" name="location" value="{{ supplier.location or '' }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label>Supplied Items</label>
+                                        <input type="text" class="form-control" name="supplied_items" value="{{ supplier.supplied_items or '' }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label>Rating (0-5)</label>
+                                        <input type="number" class="form-control" name="rating" min="0" max="5" step="0.1" value="{{ supplier.rating }}">
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="submit" class="btn btn-primary">Save changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Tab 4: Payables -->
+        <div class="tab-pane fade" id="payables" role="tabpanel">
+            <h5>Payables</h5>
+            <div class="mb-3">
+                <a href="{{ url_for('purchasing.export_payables', format='excel') }}" class="btn btn-sm btn-success"><i class="fas fa-file-excel"></i> Excel</a>
+                <a href="{{ url_for('purchasing.export_payables', format='pdf') }}" class="btn btn-sm btn-danger"><i class="fas fa-file-pdf"></i> PDF</a>
+            </div>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Order Number</th>
+                        <th>Description</th>
+                        <th>Supplier</th>
+                        <th>Duty Station</th>
+                        <th>Total Price</th>
+                        <th>Payment Status</th>
+                        <th>Payment Amount</th>
+                        <th>Remaining</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in payables %}
+                        <tr>
+                            <td>{{ order.order_number }}</td>
+                            <td>{{ order.description }}</td>
+                            <td>{{ order.supplier.name if order.supplier else 'N/A' }}</td>
+                            <td>{{ order.duty_station.name if order.duty_station else 'N/A' }}</td>
+                            <td>{{ (order.total_price or 0) | format_currency }}</td>
+                            <td>{{ order.payment_status }}</td>
+                            <td>{{ (order.payment_amount or 0) | format_currency }}</td>
+                            <td>{{ ((order.total_price or 0) - (order.payment_amount or 0)) | format_currency }}</td>
+                            <td>
+                                <form action="{{ url_for('purchasing.update_payment', order_id=order.id) }}" method="POST">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="number" name="payment_amount" class="form-control d-inline" style="width: 100px;" value="{{ order.payment_amount or 0 }}" step="0.01">
+                                    <input type="date" name="payment_date" class="form-control d-inline" style="width: 150px;" value="{{ order.payment_date | default('') }}">
+                                    <select name="payment_status" class="form-select d-inline" style="width: 120px;">
+                                        <option value="Unpaid" {% if order.payment_status == 'Unpaid' %}selected{% endif %}>Unpaid</option>
+                                        <option value="Partially Paid" {% if order.payment_status == 'Partially Paid' %}selected{% endif %}>Partially Paid</option>
+                                        <option value="Credit" {% if order.payment_status == 'Credit' %}selected{% endif %}>Credit</option>
+                                        <option value="Paid" {% if order.payment_status == 'Paid' %}selected{% endif %}>Paid</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="9">No pending payables</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Tab 5: Reporting -->
+        <div class="tab-pane fade" id="report" role="tabpanel">
+            <h5>Purchasing Report</h5>
+            <form class="mb-3" id="reportForm">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label>Start Date</label>
+                        <input type="date" class="form-control" name="start_date" id="start_date">
+                    </div>
+                    <div class="col-md-3">
+                        <label>End Date</label>
+                        <input type="date" class="form-control" name="end_date" id="end_date">
+                    </div>
+                    <div class="col-md-3">
+                        <label>Duty Station</label>
+                        <select class="form-select" name="duty_station_id" id="duty_station_id">
+                            <option value="">All</option>
+                            {% for ds in duty_stations %}
+                                <option value="{{ ds.id }}">{{ ds.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Export</label><br>
+                        <a href="#" onclick="exportReport('excel')" class="btn btn-sm btn-success"><i class="fas fa-file-excel"></i> Excel</a>
+                        <a href="#" onclick="exportReport('pdf')" class="btn btn-sm btn-danger"><i class="fas fa-file-pdf"></i> PDF</a>
+                    </div>
+                </div>
+            </form>
+            <div id="report-charts">
+                <h6>Total Expense Per Duty Station</h6>
+                <img id="bar_chart" class="img-fluid" alt="Bar Chart">
+                <table class="table table-striped mt-3">
+                    <thead>
+                        <tr>
+                            <th>Duty Station</th>
+                            <th>Total Expense</th>
+                            <th>%</th>
+                        </tr>
+                    </thead>
+                    <tbody id="total_expense_table"></tbody>
+                </table>
+
+                <h6>% Share of Total Expense</h6>
+                <img id="pie_chart" class="img-fluid" alt="Pie Chart">
+
+                <h6>Top 5 Expensive Items Per Duty Station</h6>
+                <img id="top_items_chart" class="img-fluid" alt="Top Items Chart">
+                <table class="table table-striped mt-3">
+                    <thead>
+                        <tr>
+                            <th>Duty Station</th>
+                            <th>Description</th>
+                            <th>Total Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="top_items_table"></tbody>
+                </table>
+
+                <h6>Spending Trend Over Time</h6>
+                <img id="trend_chart" class="img-fluid" alt="Trend Chart">
+                <table class="table table-striped mt-3">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Total Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trend_table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab 6: Yearly Plan -->
+        <div class="tab-pane fade" id="plan" role="tabpanel">
+            <h5>Yearly Purchase Plan</h5>
+            <form action="{{ url_for('purchasing.register_plan') }}" method="POST" class="mb-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3">
+                    <div class="col-md-2">
+                        <label>Year</label>
+                        <input type="number" class="form-control" name="year" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Duty Station</label>
+                        <select class="form-select" name="duty_station_id" required>
+                            {% for ds in duty_stations %}
+                                <option value="{{ ds.id }}">{{ ds.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Cost Category</label>
+                        <select class="form-select" name="cost_category" required>
+                            {% for cat in cost_categories %}
+                                <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label>Planned Cost</label>
+                        <input type="number" class="form-control" name="planned_cost" step="0.01" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label>Q1 Cost</label>
+                        <input type="number" class="form-control" name="q1_cost" step="0.01" value="0">
+                    </div>
+                    <div class="col-md-2">
+                        <label>Q2 Cost</label>
+                        <input type="number" class="form-control" name="q2_cost" step="0.01" value="0">
+                    </div>
+                    <div class="col-md-2">
+                        <label>Q3 Cost</label>
+                        <input type="number" class="form-control" name="q3_cost" step="0.01" value="0">
+                    </div>
+                    <div class="col-md-2">
+                        <label>Q4 Cost</label>
+                        <input type="number" class="form-control" name="q4_cost" step="0.01" value="0">
+                    </div>
+                    <div class="col-md-12">
+                        <button type="submit" class="btn btn-primary">Register Plan</button>
+                        <a href="{{ url_for('purchasing.export_plans', format='excel') }}" class="btn btn-sm btn-success"><i class="fas fa-file-excel"></i> Excel</a>
+                        <a href="{{ url_for('purchasing.export_plans', format='pdf') }}" class="btn btn-sm btn-danger"><i class="fas fa-file-pdf"></i> PDF</a>
+                    </div>
+                </div>
+            </form>
+            <form action="{{ url_for('purchasing.upload_plan') }}" method="POST" enctype="multipart/form-data" class="mb-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="input-group">
+                    <input type="file" class="form-control" name="file" accept=".xlsx">
+                    <button type="submit" class="btn btn-primary">Upload Excel</button>
+                </div>
+            </form>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Year</th>
+                        <th>Duty Station</th>
+                        <th>Cost Category</th>
+                        <th>Planned Cost</th>
+                        <th>Q1 Cost</th>
+                        <th>Q2 Cost</th>
+                        <th>Q3 Cost</th>
+                        <th>Q4 Cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for plan in yearly_plans %}
+                        <tr>
+                            <td>{{ plan.year }}</td>
+                            <td>{{ plan.duty_station.name if plan.duty_station else 'N/A' }}</td>
+                            <td>{{ plan.cost_category }}</td>
+                            <td>{{ plan.planned_cost | format_currency }}</td>
+                            <td>{{ plan.q1_cost | format_currency }}</td>
+                            <td>{{ plan.q2_cost | format_currency }}</td>
+                            <td>{{ plan.q3_cost | format_currency }}</td>
+                            <td>{{ plan.q4_cost | format_currency }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#supplier_name').on('input', function() {
+                const query = $(this).val();
+                if (query.length > 2) {
+                    $.get('{{ url_for("purchasing.search_suppliers") }}', { q: query }, function(data) {
+                        const suggestions = $('#supplier_suggestions');
+                        suggestions.empty().show();
+                        data.forEach(s => {
+                            suggestions.append(`<a class="dropdown-item" href="#" onclick="selectSupplier('${s.name}')">${s.name}</a>`);
+                        });
+                    });
+                }
+            });
+
+            $('#reportForm').on('change', function() {
+                const start = $('#start_date').val();
+                const end = $('#end_date').val();
+                const ds = $('#duty_station_id').val();
+                $.get('{{ url_for("purchasing.report_data") }}', { start_date: start, end_date: end, duty_station_id: ds }, function(data) {
+                    if (data.error) {
+                        $('#report-charts').html('<p>' + data.error + '</p>');
+                    } else {
+                        $('#bar_chart').attr('src', 'data:image/png;base64,' + data.bar_chart);
+                        $('#pie_chart').attr('src', 'data:image/png;base64,' + data.pie_chart);
+                        $('#top_items_chart').attr('src', 'data:image/png;base64,' + data.top_items_chart);
+                        $('#trend_chart').attr('src', 'data:image/png;base64,' + data.trend_chart);
+
+                        $('#total_expense_table').empty();
+                        data.total_expense.forEach(row => {
+                            $('#total_expense_table').append(
+                                `<tr><td>${row['Duty Station']}</td><td>${row['Total Price'].toLocaleString()}</td><td>${row['%']}%</td></tr>`
+                            );
+                        });
+
+                        $('#top_items_table').empty();
+                        data.top_items.forEach(row => {
+                            $('#top_items_table').append(
+                                `<tr><td>${row['Duty Station']}</td><td>${row['Description']}</td><td>${row['Total Price'].toLocaleString()}</td></tr>`
+                            );
+                        });
+
+                        $('#trend_table').empty();
+                        data.trend.forEach(row => {
+                            $('#trend_table').append(
+                                `<tr><td>${row['Month']}</td><td>${row['Total Price'].toLocaleString()}</td></tr>`
+                            );
+                        });
+                    }
+                });
+            });
+        });
+
+        function selectSupplier(name) {
+            $('#supplier_name').val(name);
+            $('#supplier_suggestions').hide();
+        }
+
+        function exportReport(format) {
+            const start = $('#start_date').val();
+            const end = $('#end_date').val();
+            const ds = $('#duty_station_id').val();
+            window.location = `{{ url_for('purchasing.export_report') }}?start_date=${start}&end_date=${end}&duty_station_id=${ds}&format=${format}`;
+        }
+    </script>
+{% endblock %}

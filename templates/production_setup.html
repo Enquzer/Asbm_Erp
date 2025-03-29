@@ -1,0 +1,56 @@
+<h2>Production Setup</h2>
+{% if setup_form is defined %}
+    <form method="POST" action="{{ url_for('production.production', tab='setup') }}">
+        {{ setup_form.hidden_tag() }}
+        <div class="mb-3">
+            {{ setup_form.name.label(class="form-label") }} {{ setup_form.name(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ setup_form.duty_station.label(class="form-label") }} {{ setup_form.duty_station(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ setup_form.process_type.label(class="form-label") }} {{ setup_form.process_type(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ setup_form.installed_capacity.label(class="form-label") }} {{ setup_form.installed_capacity(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ setup_form.efficiency_factor.label(class="form-label") }} {{ setup_form.efficiency_factor(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ setup_form.working_hours.label(class="form-label") }} {{ setup_form.working_hours(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ setup_form.working_days.label(class="form-label") }} {{ setup_form.working_days(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ setup_form.manual_capacity.label(class="form-label") }} {{ setup_form.manual_capacity(class="form-control") }}
+        </div>
+        {{ setup_form.submit(class="btn btn-primary") }}
+    </form>
+{% else %}
+    <div class="alert alert-danger" role="alert">
+        Setup form is not available. Please contact support.
+    </div>
+{% endif %}
+<h3>Machines</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Duty Station</th>
+            <th>Process Type</th>
+            <th>Capacity</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for machine in machines %}
+            <tr>
+                <td>{{ machine.name }}</td>
+                <td>{{ machine.duty_station_name }}</td>
+                <td>{{ machine.process_type }}</td>
+                <td>{{ machine.installed_capacity }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>

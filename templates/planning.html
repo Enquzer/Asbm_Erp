@@ -1,0 +1,933 @@
+{% extends 'base.html' %}
+{% block title %}Planning{% endblock %}
+{% block content %}
+<div class="container" style="overflow-y: auto; max-height: calc(100vh - 300px);">
+    <!-- Planning Dashboard -->
+    <div class="text-center">
+        <h1>Planning Dashboard</h1>
+    </div>
+
+    <!-- Dynamic Sales Summary -->
+    <div class="text-center">
+        <h2 id="salesSummaryTitle">Weekly Sales Summary</h2>
+        <table class="table table-bordered mx-auto" style="width: 60%;">
+            <thead>
+                <tr>
+                    <th>Planned Quantity</th>
+                    <th>Actual Quantity</th>
+                    <th>Quantity %</th>
+                    <th>Planned Value</th>
+                    <th>Actual Value</th>
+                    <th>Value %</th>
+                </tr>
+            </thead>
+            <tbody id="salesSummaryBody">
+                <tr>
+                    <td>{{ sales_data.weekly.planned_quantity | default(0) | round(2) }}</td>
+                    <td>{{ sales_data.weekly.actual_quantity | default(0) | round(2) }}</td>
+                    <td>{{ sales_data.weekly.quantity_percentage | default(0) | round(2) }}%</td>
+                    <td>{{ sales_data.weekly.planned_value | default(0) | round(2) }}</td>
+                    <td>{{ sales_data.weekly.actual_value | default(0) | round(2) }}</td>
+                    <td>{{ sales_data.weekly.value_percentage | default(0) | round(2) }}%</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Create New Plan Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Create New Plan</h5>
+            <form method="POST" id="createPlanForm" action="{{ url_for('planning.create_plan') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="start_date" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <button type="button" class="btn btn-success" id="generateTableBtn"><i class="fas fa-table"></i> Generate Table</button>
+                    <button type="button" class="btn btn-primary" id="addNewProductRowBtn"><i class="fas fa-plus"></i> Add New Product Plan</button>
+                </div>
+                <div id="planningTableContainer" class="table-responsive" style="display: none;">
+                    <table class="table table-bordered" id="planningTable">
+                        <thead id="planningTableHead"></thead>
+                        <tbody id="planningTableBody"></tbody>
+                    </table>
+                    <table class="table table-bordered" id="totalsTable">
+                        <thead id="totalsTableHead">
+                            <tr>
+                                <th>Total Quantity ({{ quantity_uom | default('Units') }})</th>
+                                <th>Total Sales ({{ value_uom | default('ETB') }})</th>
+                            </tr>
+                        </thead>
+                        <tbody id="totalsTableBody">
+                            <tr>
+                                <td id="totalQuantity">0.00</td>
+                                <td id="totalSales">0.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <button type="submit" class="btn btn-primary mt-3"><i class="fas fa-save"></i> Submit Plan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs" id="planningTabs" role="tablist">
+        <li class="nav-item"><a class="nav-link active" id="weekly-tab" data-bs-toggle="tab" href="#weekly" role="tab">Weekly</a></li>
+        <li class="nav-item"><a class="nav-link" id="monthly-tab" data-bs-toggle="tab" href="#monthly" role="tab">Monthly</a></li>
+        <li class="nav-item"><a class="nav-link" id="quarterly-tab" data-bs-toggle="tab" href="#quarterly" role="tab">Quarterly</a></li>
+        <li class="nav-item"><a class="nav-link" id="bi-annual-tab" data-bs-toggle="tab" href="#bi-annual" role="tab">Bi-Annual</a></li>
+        <li class="nav-item"><a class="nav-link" id="annual-tab" data-bs-toggle="tab" href="#annual" role="tab">Annual</a></li>
+        <li class="nav-item"><a class="nav-link" id="service-tab" data-bs-toggle="tab" href="#service" role="tab">Service Orders</a></li>
+        <li class="nav-item"><a class="nav-link" id="summary-tab" data-bs-toggle="tab" href="#summary" role="tab">Total Summary</a></li>
+    </ul>
+
+    <div class="tab-content" id="planningTabContent">
+        <!-- Weekly Tab -->
+        <div class="tab-pane fade show active" id="weekly" role="tabpanel">
+            <h2>Weekly Plans</h2>
+            <div class="mb-3">
+                <a href="{{ url_for('planning.export_excel', period='weekly') }}" class="btn btn-link"><i class="fas fa-file-excel fa-2x text-success"></i></a>
+                <a href="{{ url_for('planning.export_pdf', period='weekly') }}" class="btn btn-link"><i class="fas fa-file-pdf fa-2x text-danger"></i></a>
+            </div>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Product</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Planned Quantity ({{ quantity_uom | default('Units') }})</th>
+                        <th>Actual Quantity ({{ quantity_uom | default('Units') }})</th>
+                        <th>Quantity %</th>
+                        <th>Planned Value ({{ value_uom | default('ETB') }})</th>
+                        <th>Actual Value ({{ value_uom | default('ETB') }})</th>
+                        <th>Value %</th>
+                        <th>Product Share %</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if sales_data.weekly is defined and sales_data.weekly.plans is defined %}
+                        {% for plan_data in sales_data.weekly.plans | default([]) %}
+                            <tr>
+                                <td>{{ plan_data.customer_name | default('N/A') }}</td>
+                                <td>{{ plan_data.product_name | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.start_date | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.end_date | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.planned_quantity | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.actual_quantity | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.quantity_percentage | default(0) | round(2) }}%</td>
+                                <td>{{ plan_data.plan.planned_value | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.actual_value | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.value_percentage | default(0) | round(2) }}%</td>
+                                <td>{{ plan_data.product_share | default(0) | round(2) }}%</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('planning.update_plan', plan_id=plan_data.plan.id | default(0)) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="number" step="0.01" name="planned_quantity" value="{{ plan_data.plan.planned_quantity | default(0) }}" required>
+                                        <input type="number" step="0.01" name="planned_value" value="{{ plan_data.plan.planned_value | default(0) }}" required>
+                                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('planning.delete_plan', plan_id=plan_data.plan.id | default(0)) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        <tr>
+                            <td colspan="4"><strong>Overall Total</strong></td>
+                            <td>{{ sales_data.weekly.planned_quantity | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.weekly.actual_quantity | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.weekly.quantity_percentage | default(0) | round(2) }}%</td>
+                            <td>{{ sales_data.weekly.planned_value | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.weekly.actual_value | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.weekly.value_percentage | default(0) | round(2) }}%</td>
+                            <td>100%</td>
+                            <td></td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="12">No weekly plans available.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <div class="row">
+                <div class="col-md-6"><h3>Sales vs Week</h3><canvas id="weeklySalesChart"></canvas></div>
+                <div class="col-md-6"><h3>Quantity vs Week</h3><canvas id="weeklyQuantityChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Monthly Tab -->
+        <div class="tab-pane fade" id="monthly" role="tabpanel">
+            <h2>Monthly Plans</h2>
+            <div class="mb-3">
+                <a href="{{ url_for('planning.export_excel', period='monthly') }}" class="btn btn-link"><i class="fas fa-file-excel fa-2x text-success"></i></a>
+                <a href="{{ url_for('planning.export_pdf', period='monthly') }}" class="btn btn-link"><i class="fas fa-file-pdf fa-2x text-danger"></i></a>
+            </div>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Product</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Planned Quantity ({{ quantity_uom | default('Units') }})</th>
+                        <th>Actual Quantity ({{ quantity_uom | default('Units') }})</th>
+                        <th>Quantity %</th>
+                        <th>Planned Value ({{ value_uom | default('ETB') }})</th>
+                        <th>Actual Value ({{ value_uom | default('ETB') }})</th>
+                        <th>Value %</th>
+                        <th>Product Share %</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if sales_data.monthly is defined and sales_data.monthly.plans is defined %}
+                        {% for plan_data in sales_data.monthly.plans | default([]) %}
+                            <tr>
+                                <td>{{ plan_data.customer_name | default('N/A') }}</td>
+                                <td>{{ plan_data.product_name | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.start_date | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.end_date | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.planned_quantity | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.actual_quantity | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.quantity_percentage | default(0) | round(2) }}%</td>
+                                <td>{{ plan_data.plan.planned_value | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.actual_value | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.value_percentage | default(0) | round(2) }}%</td>
+                                <td>{{ plan_data.product_share | default(0) | round(2) }}%</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('planning.update_plan', plan_id=plan_data.plan.id | default(0)) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="number" step="0.01" name="planned_quantity" value="{{ plan_data.plan.planned_quantity | default(0) }}" required>
+                                        <input type="number" step="0.01" name="planned_value" value="{{ plan_data.plan.planned_value | default(0) }}" required>
+                                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('planning.delete_plan', plan_id=plan_data.plan.id | default(0)) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        <tr>
+                            <td colspan="4"><strong>Overall Total</strong></td>
+                            <td>{{ sales_data.monthly.planned_quantity | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.monthly.actual_quantity | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.monthly.quantity_percentage | default(0) | round(2) }}%</td>
+                            <td>{{ sales_data.monthly.planned_value | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.monthly.actual_value | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.monthly.value_percentage | default(0) | round(2) }}%</td>
+                            <td>100%</td>
+                            <td></td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="12">No monthly plans available.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <div class="row">
+                <div class="col-md-6"><h3>Sales vs Month</h3><canvas id="monthlySalesChart"></canvas></div>
+                <div class="col-md-6"><h3>Quantity vs Month</h3><canvas id="monthlyQuantityChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Quarterly Tab -->
+        <div class="tab-pane fade" id="quarterly" role="tabpanel">
+            <h2>Quarterly Plans</h2>
+            <div class="mb-3">
+                <a href="{{ url_for('planning.export_excel', period='quarterly') }}" class="btn btn-link"><i class="fas fa-file-excel fa-2x text-success"></i></a>
+                <a href="{{ url_for('planning.export_pdf', period='quarterly') }}" class="btn btn-link"><i class="fas fa-file-pdf fa-2x text-danger"></i></a>
+            </div>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Product</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Planned Quantity ({{ quantity_uom | default('Units') }})</th>
+                        <th>Actual Quantity ({{ quantity_uom | default('Units') }})</th>
+                        <th>Quantity %</th>
+                        <th>Planned Value ({{ value_uom | default('ETB') }})</th>
+                        <th>Actual Value ({{ value_uom | default('ETB') }})</th>
+                        <th>Value %</th>
+                        <th>Product Share %</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if sales_data.quarterly is defined and sales_data.quarterly.plans is defined %}
+                        {% for plan_data in sales_data.quarterly.plans | default([]) %}
+                            <tr>
+                                <td>{{ plan_data.customer_name | default('N/A') }}</td>
+                                <td>{{ plan_data.product_name | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.start_date | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.end_date | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.planned_quantity | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.actual_quantity | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.quantity_percentage | default(0) | round(2) }}%</td>
+                                <td>{{ plan_data.plan.planned_value | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.actual_value | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.value_percentage | default(0) | round(2) }}%</td>
+                                <td>{{ plan_data.product_share | default(0) | round(2) }}%</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('planning.update_plan', plan_id=plan_data.plan.id | default(0)) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="number" step="0.01" name="planned_quantity" value="{{ plan_data.plan.planned_quantity | default(0) }}" required>
+                                        <input type="number" step="0.01" name="planned_value" value="{{ plan_data.plan.planned_value | default(0) }}" required>
+                                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('planning.delete_plan', plan_id=plan_data.plan.id | default(0)) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        <tr>
+                            <td colspan="4"><strong>Overall Total</strong></td>
+                            <td>{{ sales_data.quarterly.planned_quantity | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.quarterly.actual_quantity | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.quarterly.quantity_percentage | default(0) | round(2) }}%</td>
+                            <td>{{ sales_data.quarterly.planned_value | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.quarterly.actual_value | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.quarterly.value_percentage | default(0) | round(2) }}%</td>
+                            <td>100%</td>
+                            <td></td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="12">No quarterly plans available.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <div class="row">
+                <div class="col-md-6"><h3>Sales vs Quarter</h3><canvas id="quarterlySalesChart"></canvas></div>
+                <div class="col-md-6"><h3>Quantity vs Quarter</h3><canvas id="quarterlyQuantityChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Bi-Annual Tab -->
+        <div class="tab-pane fade" id="bi-annual" role="tabpanel">
+            <h2>Bi-Annual Plans</h2>
+            <div class="mb-3">
+                <a href="{{ url_for('planning.export_excel', period='bi-annual') }}" class="btn btn-link"><i class="fas fa-file-excel fa-2x text-success"></i></a>
+                <a href="{{ url_for('planning.export_pdf', period='bi-annual') }}" class="btn btn-link"><i class="fas fa-file-pdf fa-2x text-danger"></i></a>
+            </div>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Product</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Planned Quantity ({{ quantity_uom | default('Units') }})</th>
+                        <th>Actual Quantity ({{ quantity_uom | default('Units') }})</th>
+                        <th>Quantity %</th>
+                        <th>Planned Value ({{ value_uom | default('ETB') }})</th>
+                        <th>Actual Value ({{ value_uom | default('ETB') }})</th>
+                        <th>Value %</th>
+                        <th>Product Share %</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if sales_data.bi_annual is defined and sales_data.bi_annual.plans is defined %}
+                        {% for plan_data in sales_data.bi_annual.plans | default([]) %}
+                            <tr>
+                                <td>{{ plan_data.customer_name | default('N/A') }}</td>
+                                <td>{{ plan_data.product_name | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.start_date | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.end_date | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.planned_quantity | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.actual_quantity | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.quantity_percentage | default(0) | round(2) }}%</td>
+                                <td>{{ plan_data.plan.planned_value | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.actual_value | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.value_percentage | default(0) | round(2) }}%</td>
+                                <td>{{ plan_data.product_share | default(0) | round(2) }}%</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('planning.update_plan', plan_id=plan_data.plan.id | default(0)) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="number" step="0.01" name="planned_quantity" value="{{ plan_data.plan.planned_quantity | default(0) }}" required>
+                                        <input type="number" step="0.01" name="planned_value" value="{{ plan_data.plan.planned_value | default(0) }}" required>
+                                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('planning.delete_plan', plan_id=plan_data.plan.id | default(0)) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        <tr>
+                            <td colspan="4"><strong>Overall Total</strong></td>
+                            <td>{{ sales_data.bi_annual.planned_quantity | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.bi_annual.actual_quantity | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.bi_annual.quantity_percentage | default(0) | round(2) }}%</td>
+                            <td>{{ sales_data.bi_annual.planned_value | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.bi_annual.actual_value | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.bi_annual.value_percentage | default(0) | round(2) }}%</td>
+                            <td>100%</td>
+                            <td></td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="12">No bi-annual plans available.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <div class="row">
+                <div class="col-md-6"><h3>Sales vs Bi-Annual</h3><canvas id="biAnnualSalesChart"></canvas></div>
+                <div class="col-md-6"><h3>Quantity vs Bi-Annual</h3><canvas id="biAnnualQuantityChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Annual Tab -->
+        <div class="tab-pane fade" id="annual" role="tabpanel">
+            <h2>Annual Plans</h2>
+            <div class="mb-3">
+                <a href="{{ url_for('planning.export_excel', period='annual') }}" class="btn btn-link"><i class="fas fa-file-excel fa-2x text-success"></i></a>
+                <a href="{{ url_for('planning.export_pdf', period='annual') }}" class="btn btn-link"><i class="fas fa-file-pdf fa-2x text-danger"></i></a>
+            </div>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Product</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Planned Quantity ({{ quantity_uom | default('Units') }})</th>
+                        <th>Actual Quantity ({{ quantity_uom | default('Units') }})</th>
+                        <th>Quantity %</th>
+                        <th>Planned Value ({{ value_uom | default('ETB') }})</th>
+                        <th>Actual Value ({{ value_uom | default('ETB') }})</th>
+                        <th>Value %</th>
+                        <th>Product Share %</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if sales_data.annual is defined and sales_data.annual.plans is defined %}
+                        {% for plan_data in sales_data.annual.plans | default([]) %}
+                            <tr>
+                                <td>{{ plan_data.customer_name | default('N/A') }}</td>
+                                <td>{{ plan_data.product_name | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.start_date | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.end_date | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.planned_quantity | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.actual_quantity | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.quantity_percentage | default(0) | round(2) }}%</td>
+                                <td>{{ plan_data.plan.planned_value | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.actual_value | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.value_percentage | default(0) | round(2) }}%</td>
+                                <td>{{ plan_data.product_share | default(0) | round(2) }}%</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('planning.update_plan', plan_id=plan_data.plan.id | default(0)) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="number" step="0.01" name="planned_quantity" value="{{ plan_data.plan.planned_quantity | default(0) }}" required>
+                                        <input type="number" step="0.01" name="planned_value" value="{{ plan_data.plan.planned_value | default(0) }}" required>
+                                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('planning.delete_plan', plan_id=plan_data.plan.id | default(0)) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        <tr>
+                            <td colspan="4"><strong>Overall Total</strong></td>
+                            <td>{{ sales_data.annual.planned_quantity | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.annual.actual_quantity | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.annual.quantity_percentage | default(0) | round(2) }}%</td>
+                            <td>{{ sales_data.annual.planned_value | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.annual.actual_value | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.annual.value_percentage | default(0) | round(2) }}%</td>
+                            <td>100%</td>
+                            <td></td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="12">No annual plans available.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <div class="row">
+                <div class="col-md-6"><h3>Sales vs Year</h3><canvas id="annualSalesChart"></canvas></div>
+                <div class="col-md-6"><h3>Quantity vs Year</h3><canvas id="annualQuantityChart"></canvas></div>
+            </div>
+            <div class="row"><div class="col-md-12"><h3>Pareto Chart</h3><canvas id="paretoChart"></canvas></div></div>
+        </div>
+
+        <!-- Service Orders Tab -->
+        <div class="tab-pane fade" id="service" role="tabpanel">
+            <h2>Service Orders</h2>
+            <div class="mb-3">
+                <a href="{{ url_for('planning.export_excel', period='service') }}" class="btn btn-link"><i class="fas fa-file-excel fa-2x text-success"></i></a>
+                <a href="{{ url_for('planning.export_pdf', period='service') }}" class="btn btn-link"><i class="fas fa-file-pdf fa-2x text-danger"></i></a>
+            </div>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Product</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Planned Quantity ({{ quantity_uom | default('Units') }})</th>
+                        <th>Actual Quantity ({{ quantity_uom | default('Units') }})</th>
+                        <th>Quantity %</th>
+                        <th>Planned Value ({{ value_uom | default('ETB') }})</th>
+                        <th>Actual Value ({{ value_uom | default('ETB') }})</th>
+                        <th>Value %</th>
+                        <th>Product Share %</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if sales_data.service is defined and sales_data.service.plans is defined %}
+                        {% for plan_data in sales_data.service.plans | default([]) %}
+                            <tr>
+                                <td>{{ plan_data.customer_name | default('N/A') }}</td>
+                                <td>{{ plan_data.product_name | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.start_date | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.end_date | default('N/A') }}</td>
+                                <td>{{ plan_data.plan.planned_quantity | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.actual_quantity | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.quantity_percentage | default(0) | round(2) }}%</td>
+                                <td>{{ plan_data.plan.planned_value | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.actual_value | default(0) | round(2) }}</td>
+                                <td>{{ plan_data.value_percentage | default(0) | round(2) }}%</td>
+                                <td>{{ plan_data.product_share | default(0) | round(2) }}%</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('planning.update_plan', plan_id=plan_data.plan.id | default(0)) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="number" step="0.01" name="planned_quantity" value="{{ plan_data.plan.planned_quantity | default(0) }}" required>
+                                        <input type="number" step="0.01" name="planned_value" value="{{ plan_data.plan.planned_value | default(0) }}" required>
+                                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('planning.delete_plan', plan_id=plan_data.plan.id | default(0)) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        <tr>
+                            <td colspan="4"><strong>Overall Total</strong></td>
+                            <td>{{ sales_data.service.planned_quantity | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.service.actual_quantity | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.service.quantity_percentage | default(0) | round(2) }}%</td>
+                            <td>{{ sales_data.service.planned_value | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.service.actual_value | default(0) | round(2) }}</td>
+                            <td>{{ sales_data.service.value_percentage | default(0) | round(2) }}%</td>
+                            <td>100%</td>
+                            <td></td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="12">No service plans available.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <div class="row">
+                <div class="col-md-6"><h3>Service Sales</h3><canvas id="serviceSalesChart"></canvas></div>
+                <div class="col-md-6"><h3>Service Quantity</h3><canvas id="serviceQuantityChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Total Summary Tab -->
+        <div class="tab-pane fade" id="summary" role="tabpanel">
+            <h2>Total Summary (Direct + Service)</h2>
+            <div class="mb-3">
+                <a href="{{ url_for('planning.export_excel', period='summary') }}" class="btn btn-link"><i class="fas fa-file-excel fa-2x text-success"></i></a>
+                <a href="{{ url_for('planning.export_pdf', period='summary') }}" class="btn btn-link"><i class="fas fa-file-pdf fa-2x text-danger"></i></a>
+            </div>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Planned Quantity ({{ quantity_uom | default('Units') }})</th>
+                        <th>Actual Quantity ({{ quantity_uom | default('Units') }})</th>
+                        <th>Quantity %</th>
+                        <th>Planned Value ({{ value_uom | default('ETB') }})</th>
+                        <th>Actual Value ({{ value_uom | default('ETB') }})</th>
+                        <th>Value %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Direct Sales</td>
+                        <td>{{ sales_data.summary.direct.planned_quantity | default(0) | round(2) }}</td>
+                        <td>{{ sales_data.summary.direct.actual_quantity | default(0) | round(2) }}</td>
+                        <td>{{ sales_data.summary.direct.quantity_percentage | default(0) | round(2) }}%</td>
+                        <td>{{ sales_data.summary.direct.planned_value | default(0) | round(2) }}</td>
+                        <td>{{ sales_data.summary.direct.actual_value | default(0) | round(2) }}</td>
+                        <td>{{ sales_data.summary.direct.value_percentage | default(0) | round(2) }}%</td>
+                    </tr>
+                    <tr>
+                        <td>Service Sales</td>
+                        <td>{{ sales_data.summary.service.planned_quantity | default(0) | round(2) }}</td>
+                        <td>{{ sales_data.summary.service.actual_quantity | default(0) | round(2) }}</td>
+                        <td>{{ sales_data.summary.service.quantity_percentage | default(0) | round(2) }}%</td>
+                        <td>{{ sales_data.summary.service.planned_value | default(0) | round(2) }}</td>
+                        <td>{{ sales_data.summary.service.actual_value | default(0) | round(2) }}</td>
+                        <td>{{ sales_data.summary.service.value_percentage | default(0) | round(2) }}%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total</strong></td>
+                        <td>{{ (sales_data.summary.direct.planned_quantity | default(0) + sales_data.summary.service.planned_quantity | default(0)) | round(2) }}</td>
+                        <td>{{ (sales_data.summary.direct.actual_quantity | default(0) + sales_data.summary.service.actual_quantity | default(0)) | round(2) }}</td>
+                        <td>{{ ((sales_data.summary.direct.actual_quantity | default(0) + sales_data.summary.service.actual_quantity | default(0)) / (sales_data.summary.direct.planned_quantity | default(0) + sales_data.summary.service.planned_quantity | default(0)) * 100) | round(2) if (sales_data.summary.direct.planned_quantity | default(0) + sales_data.summary.service.planned_quantity | default(0)) > 0 else 0 }}%</td>
+                        <td>{{ (sales_data.summary.direct.planned_value | default(0) + sales_data.summary.service.planned_value | default(0)) | round(2) }}</td>
+                        <td>{{ (sales_data.summary.direct.actual_value | default(0) + sales_data.summary.service.actual_value | default(0)) | round(2) }}</td>
+                        <td>{{ ((sales_data.summary.direct.actual_value | default(0) + sales_data.summary.service.actual_value | default(0)) / (sales_data.summary.direct.planned_value | default(0) + sales_data.summary.service.planned_value | default(0)) * 100) | round(2) if (sales_data.summary.direct.planned_value | default(0) + sales_data.summary.service.planned_value | default(0)) > 0 else 0 }}%</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="row">
+                <div class="col-md-6"><h3>Total Sales</h3><canvas id="summarySalesChart"></canvas></div>
+                <div class="col-md-6"><h3>Total Quantity</h3><canvas id="summaryQuantityChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    const generateTableBtn = document.getElementById('generateTableBtn');
+    const addNewProductRowBtn = document.getElementById('addNewProductRowBtn');
+    const planningTableContainer = document.getElementById('planningTableContainer');
+    const planningTableHead = document.getElementById('planningTableHead');
+    const planningTableBody = document.getElementById('planningTableBody');
+    const totalQuantityDisplay = document.getElementById('totalQuantity');
+    const totalSalesDisplay = document.getElementById('totalSales');
+    const salesSummaryTitle = document.getElementById('salesSummaryTitle');
+    const salesSummaryBody = document.getElementById('salesSummaryBody');
+    let dateRange = [];
+    let productsData = [];
+
+    // Fetch products from the server
+    fetch('/planning/get_products')
+        .then(response => response.json())
+        .then(products => {
+            productsData = products;
+        });
+
+    // Update Sales Summary based on active tab
+    function updateSalesSummary(tab) {
+        let periodData;
+        let title;
+        switch(tab) {
+            case 'weekly':
+                periodData = {{ sales_data.weekly | tojson }};
+                title = 'Weekly Sales Summary';
+                break;
+            case 'monthly':
+                periodData = {{ sales_data.monthly | tojson }};
+                title = 'Monthly Sales Summary';
+                break;
+            case 'quarterly':
+                periodData = {{ sales_data.quarterly | tojson }};
+                title = 'Quarterly Sales Summary';
+                break;
+            case 'bi-annual':
+                periodData = {{ sales_data.bi_annual | tojson }};
+                title = 'Bi-Annual Sales Summary';
+                break;
+            case 'annual':
+                periodData = {{ sales_data.annual | tojson }};
+                title = 'Annual Sales Summary';
+                break;
+            case 'service':
+                periodData = {{ sales_data.service | tojson }};
+                title = 'Service Orders Sales Summary';
+                break;
+            case 'summary':
+                periodData = {{ sales_data.summary | tojson }};
+                title = 'Total Summary (Direct + Service)';
+                break;
+            default:
+                periodData = {{ sales_data.weekly | tojson }};
+                title = 'Weekly Sales Summary';
+        }
+
+        salesSummaryTitle.textContent = title;
+        salesSummaryBody.innerHTML = `
+            <tr>
+                <td>${(periodData.planned_quantity || 0).toFixed(2)}</td>
+                <td>${(periodData.actual_quantity || 0).toFixed(2)}</td>
+                <td>${(periodData.quantity_percentage || 0).toFixed(2)}%</td>
+                <td>${(periodData.planned_value || 0).toFixed(2)}</td>
+                <td>${(periodData.actual_value || 0).toFixed(2)}</td>
+                <td>${(periodData.value_percentage || 0).toFixed(2)}%</td>
+            </tr>
+        `;
+    }
+
+    // Update tabs event listener
+    document.querySelectorAll('#planningTabs a').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function (e) {
+            const activeTab = e.target.id.split('-')[0];
+            updateSalesSummary(activeTab);
+        });
+    });
+
+    // Generate table based on date range
+    generateTableBtn.addEventListener('click', function() {
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        if (!startDate || !endDate) {
+            alert('Please select both start and end dates.');
+            return;
+        }
+
+        dateRange = getDateRange(startDate, endDate);
+        planningTableHead.innerHTML = `
+            <tr>
+                <th>Customer</th>
+                <th>Product</th>
+                <th>Sold Price ({{ value_uom | default('ETB') }})</th>
+                <th>Sales Type</th>
+                ${dateRange.map(date => `<th colspan="2">${formatDate(date)}</th>`).join('')}
+            </tr>
+            <tr>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                ${dateRange.map(() => `<th>Total Produced ({{ quantity_uom | default('Units') }})</th><th>Total Sold ({{ value_uom | default('ETB') }})</th>`).join('')}
+            </tr>
+        `;
+        planningTableBody.innerHTML = '';
+        addProductRow();
+        planningTableContainer.style.display = 'block';
+    });
+
+    // Add new product row
+    addNewProductRowBtn.addEventListener('click', function() {
+        if (!dateRange.length) {
+            alert('Please generate the table by selecting a date range first.');
+            return;
+        }
+        addProductRow();
+    });
+
+    function addProductRow() {
+        const rowId = Date.now();
+        const row = document.createElement('tr');
+        row.setAttribute('data-row-id', rowId);
+        row.innerHTML = `
+            <td><input type="text" name="customer_names[]" class="form-control" value="N/A" readonly></td>
+            <td>
+                <select name="product_ids[]" class="form-control product-select" data-row-id="${rowId}" required>
+                    <option value="">Select Product</option>
+                    ${productsData.map(product => `<option value="${product.id}" data-price="${product.selling_price}">${product.name}</option>`).join('')}
+                </select>
+            </td>
+            <td><input type="number" name="selling_prices[]" class="form-control selling-price" data-row-id="${rowId}" readonly></td>
+            <td>
+                <select name="sales_types[]" class="form-control sales-type" data-row-id="${rowId}" required>
+                    <option value="direct">Direct Sales</option>
+                    <option value="service">Service Sales</option>
+                </select>
+            </td>
+            ${dateRange.map(date => `
+                <td>
+                    <input type="number" step="0.01" name="quantities[${rowId}][${date}]" class="form-control quantity-input" data-row-id="${rowId}" data-date="${date}" min="0" value="0">
+                </td>
+                <td>
+                    <input type="number" step="0.01" name="sales_values[${rowId}][${date}]" class="form-control sales-value" data-row-id="${rowId}" data-date="${date}" readonly>
+                </td>
+            `).join('')}
+        `;
+        planningTableBody.appendChild(row);
+
+        // Add event listener for product selection
+        const productSelect = row.querySelector('.product-select');
+        productSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const sellingPrice = parseFloat(selectedOption.getAttribute('data-price')) || 0;
+            const sellingPriceInput = row.querySelector('.selling-price');
+            sellingPriceInput.value = sellingPrice.toFixed(2);
+            updateRowSales(rowId);
+        });
+
+        // Add event listeners for quantity inputs
+        row.querySelectorAll('.quantity-input').forEach(input => {
+            input.addEventListener('input', function() {
+                updateRowSales(rowId);
+                updateTotals();
+            });
+        });
+    }
+
+    function updateRowSales(rowId) {
+        const row = planningTableBody.querySelector(`tr[data-row-id="${rowId}"]`);
+        const sellingPrice = parseFloat(row.querySelector('.selling-price').value) || 0;
+        dateRange.forEach(date => {
+            const quantityInput = row.querySelector(`.quantity-input[data-date="${date}"]`);
+            const salesInput = row.querySelector(`.sales-value[data-date="${date}"]`);
+            const quantity = parseFloat(quantityInput.value) || 0;
+            const sales = quantity * sellingPrice;
+            salesInput.value = sales.toFixed(2);
+        });
+    }
+
+    function updateTotals() {
+        let totalQuantity = 0;
+        let totalSales = 0;
+        planningTableBody.querySelectorAll('tr').forEach(row => {
+            dateRange.forEach(date => {
+                const quantityInput = row.querySelector(`.quantity-input[data-date="${date}"]`);
+                const salesInput = row.querySelector(`.sales-value[data-date="${date}"]`);
+                const quantity = parseFloat(quantityInput.value) || 0;
+                const sales = parseFloat(salesInput.value) || 0;
+                totalQuantity += quantity;
+                totalSales += sales;
+            });
+        });
+        totalQuantityDisplay.textContent = totalQuantity.toFixed(2);
+        totalSalesDisplay.textContent = totalSales.toFixed(2);
+    }
+
+    function getDateRange(start, end) {
+        const dates = [];
+        let currentDate = new Date(start);
+        const endDate = new Date(end);
+        while (currentDate <= endDate) {
+            dates.push(currentDate.toISOString().split('T')[0]);
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        return dates;
+    }
+
+    function formatDate(dateStr) {
+        const date = new Date(dateStr);
+        const options = { month: 'short', day: 'numeric' };
+        return date.toLocaleDateString('en-US', options);
+    }
+
+    const chartConfig = (ctx, type, data, yTitle) => new Chart(ctx, {
+        type: type,
+        data: data,
+        options: { scales: { y: { beginAtZero: true, title: { display: true, text: yTitle } } } }
+    });
+
+    // Weekly Charts
+    const weeklySalesData = { labels: {{ chart_data.weekly.labels | default([]) | tojson }}, datasets: [{% for product_name, sales in (chart_data.weekly.sales | default({})).items() %}{ label: '{{ product_name }}', data: {{ sales | tojson }}, fill: false },{% endfor %}] };
+    weeklySalesData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
+    chartConfig(document.getElementById('weeklySalesChart').getContext('2d'), 'line', weeklySalesData, 'Sales ({{ value_uom | default('ETB') }})');
+
+    const weeklyQuantityData = { labels: {{ chart_data.weekly.labels | default([]) | tojson }}, datasets: [{% for product_name, quantities in (chart_data.weekly.quantities | default({})).items() %}{ label: '{{ product_name }}', data: {{ quantities | tojson }}, fill: false },{% endfor %}] };
+    weeklyQuantityData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
+    chartConfig(document.getElementById('weeklyQuantityChart').getContext('2d'), 'line', weeklyQuantityData, 'Quantity ({{ quantity_uom | default('Units') }})');
+
+    // Monthly Charts
+    const monthlySalesData = { labels: {{ chart_data.monthly.labels | default([]) | tojson }}, datasets: [{% for product_name, sales in (chart_data.monthly.sales | default({})).items() %}{ label: '{{ product_name }}', data: {{ sales | tojson }}, fill: false },{% endfor %}] };
+    monthlySalesData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
+    chartConfig(document.getElementById('monthlySalesChart').getContext('2d'), 'line', monthlySalesData, 'Sales ({{ value_uom | default('ETB') }})');
+
+    const monthlyQuantityData = { labels: {{ chart_data.monthly.labels | default([]) | tojson }}, datasets: [{% for product_name, quantities in (chart_data.monthly.quantities | default({})).items() %}{ label: '{{ product_name }}', data: {{ quantities | tojson }}, fill: false },{% endfor %}] };
+    monthlyQuantityData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
+    chartConfig(document.getElementById('monthlyQuantityChart').getContext('2d'), 'line', monthlyQuantityData, 'Quantity ({{ quantity_uom | default('Units') }})');
+
+    // Quarterly Charts
+    const quarterlySalesData = { labels: {{ chart_data.quarterly.labels | default([]) | tojson }}, datasets: [{% for product_name, sales in (chart_data.quarterly.sales | default({})).items() %}{ label: '{{ product_name }}', data: {{ sales | tojson }}, fill: false },{% endfor %}] };
+    quarterlySalesData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
+    chartConfig(document.getElementById('quarterlySalesChart').getContext('2d'), 'line', quarterlySalesData, 'Sales ({{ value_uom | default('ETB') }})');
+
+    const quarterlyQuantityData = { labels: {{ chart_data.quarterly.labels | default([]) | tojson }}, datasets: [{% for product_name, quantities in (chart_data.quarterly.quantities | default({})).items() %}{ label: '{{ product_name }}', data: {{ quantities | tojson }}, fill: false },{% endfor %}] };
+    quarterlyQuantityData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
+    chartConfig(document.getElementById('quarterlyQuantityChart').getContext('2d'), 'line', quarterlyQuantityData, 'Quantity ({{ quantity_uom | default('Units') }})');
+
+    // Bi-Annual Charts
+    const biAnnualSalesData = { labels: {{ chart_data.bi_annual.labels | default([]) | tojson }}, datasets: [{% for product_name, sales in (chart_data.bi_annual.sales | default({})).items() %}{ label: '{{ product_name }}', data: {{ sales | tojson }}, fill: false },{% endfor %}] };
+    biAnnualSalesData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
+    chartConfig(document.getElementById('biAnnualSalesChart').getContext('2d'), 'line', biAnnualSalesData, 'Sales ({{ value_uom | default('ETB') }})');
+
+    const biAnnualQuantityData = { labels: {{ chart_data.bi_annual.labels | default([]) | tojson }}, datasets: [{% for product_name, quantities in (chart_data.bi_annual.quantities | default({})).items() %}{ label: '{{ product_name }}', data: {{ quantities | tojson }}, fill: false },{% endfor %}] };
+    biAnnualQuantityData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
+    chartConfig(document.getElementById('biAnnualQuantityChart').getContext('2d'), 'line', biAnnualQuantityData, 'Quantity ({{ quantity_uom | default('Units') }})');
+
+    // Annual Charts
+    const annualSalesData = { labels: {{ chart_data.annual.labels | default([]) | tojson }}, datasets: [{% for product_name, sales in (chart_data.annual.sales | default({})).items() %}{ label: '{{ product_name }}', data: {{ sales | tojson }}, fill: false },{% endfor %}] };
+    annualSalesData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
+    chartConfig(document.getElementById('annualSalesChart').getContext('2d'), 'line', annualSalesData, 'Sales ({{ value_uom | default('ETB') }})');
+
+    const annualQuantityData = { labels: {{ chart_data.annual.labels | default([]) | tojson }}, datasets: [{% for product_name, quantities in (chart_data.annual.quantities | default({})).items() %}{ label: '{{ product_name }}', data: {{ quantities | tojson }}, fill: false },{% endfor %}] };
+    annualQuantityData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
+    chartConfig(document.getElementById('annualQuantityChart').getContext('2d'), 'line', annualQuantityData, 'Quantity ({{ quantity_uom | default('Units') }})');
+
+    // Service Charts
+    const serviceSalesData = { labels: {{ chart_data.service.labels | default([]) | tojson }}, datasets: [{% for product_name, sales in (chart_data.service.sales | default({})).items() %}{ label: '{{ product_name }}', data: {{ sales | tojson }}, fill: false },{% endfor %}] };
+    serviceSalesData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
+    chartConfig(document.getElementById('serviceSalesChart').getContext('2d'), 'line', serviceSalesData, 'Sales ({{ value_uom | default('ETB') }})');
+
+    const serviceQuantityData = { labels: {{ chart_data.service.labels | default([]) | tojson }}, datasets: [{% for product_name, quantities in (chart_data.service.quantities | default({})).items() %}{ label: '{{ product_name }}', data: {{ quantities | tojson }}, fill: false },{% endfor %}] };
+    serviceQuantityData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
+    chartConfig(document.getElementById('serviceQuantityChart').getContext('2d'), 'line', serviceQuantityData, 'Quantity ({{ quantity_uom | default('Units') }})');
+
+    // Pareto Chart
+    const paretoData = {
+        labels: {{ pareto_labels | tojson }},
+        datasets: [
+            {
+                label: 'Sales',
+                data: {{ pareto_values | tojson }},
+                backgroundColor: '#36A2EB',
+                type: 'bar'
+            },
+            {
+                label: 'Cumulative %',
+                data: {{ pareto_cumulative | tojson }},
+                borderColor: '#FF6384',
+                fill: false,
+                type: 'line',
+                yAxisID: 'y1'
+            }
+        ]
+    };
+    new Chart(document.getElementById('paretoChart').getContext('2d'), {
+        type: 'bar',
+        data: paretoData,
+        options: {
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: 'Sales ({{ value_uom | default('ETB') }})' } },
+                y1: { position: 'right', beginAtZero: true, max: 100, title: { display: true, text: 'Cumulative %' } }
+            }
+        }
+    });
+
+    // Summary Charts (Direct + Service)
+    const summarySalesData = {
+        labels: ['Direct Sales', 'Service Sales'],
+        datasets: [{
+            label: 'Sales',
+            data: [{{ sales_data.summary.direct.actual_value | default(0) | tojson }}, {{ sales_data.summary.service.actual_value | default(0) | tojson }}],
+            backgroundColor: ['#36A2EB', '#FF6384']
+        }]
+    };
+    chartConfig(document.getElementById('summarySalesChart').getContext('2d'), 'bar', summarySalesData, 'Sales ({{ value_uom | default('ETB') }})');
+
+    const summaryQuantityData = {
+        labels: ['Direct Sales', 'Service Sales'],
+        datasets: [{
+            label: 'Quantity',
+            data: [{{ sales_data.summary.direct.actual_quantity | default(0) | tojson }}, {{ sales_data.summary.service.actual_quantity | default(0) | tojson }}],
+            backgroundColor: ['#36A2EB', '#FF6384']
+        }]
+    };
+    chartConfig(document.getElementById('summaryQuantityChart').getContext('2d'), 'bar', summaryQuantityData, 'Quantity ({{ quantity_uom | default('Units') }})');
+</script>
+{% endblock %}

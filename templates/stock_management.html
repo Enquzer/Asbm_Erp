@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+{% block title %}Stock Management - ASBM ERP{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h1 class="card-title text-center mb-4"><i class="fas fa-warehouse me-2"></i>Stock Management</h1>
+
+    <!-- Global Search and Upload -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <input type="text" class="form-control" id="globalSearch" placeholder="Search items, duty stations...">
+        </div>
+        <div class="col-md-3">
+            <input type="file" class="form-control" id="excelUpload" accept=".xlsx">
+        </div>
+        <div class="col-md-3">
+            <button class="btn btn-custom w-100" onclick="uploadExcel()"><i class="fas fa-upload me-2"></i>Upload Excel</button>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" id="stockTabs" role="tablist">
+        {% for ds in duty_stations %}
+            <li class="nav-item">
+                <a class="nav-link {% if loop.first %}active{% endif %}" id="tab-{{ ds.id }}" data-bs-toggle="tab" href="#content-{{ ds.id }}" role="tab">{{ ds.name }}</a>
+            </li>
+        {% endfor %}
+        <li class="nav-item">
+            <a class="nav-link" id="tab-summary" data-bs-toggle="tab" href="#content-summary" role="tab">Summary</a>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="stockTabContent">
+        {% for ds in duty_stations %}
+            <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="content-{{ ds.id }}" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h2 class="card-title">{{ ds.name }} - Add Stock Item</h2>
+                        <form class="addItemForm row g-3" data-ds-id="{{ ds.id }}">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" name="name" placeholder="Item Name" required>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" name="category_id" required>
+                                    <option value="" disabled selected>Select Category</option>
+                                    {% for cat in categories %}
+                                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="text" class="form-control" name="unit_of_measure" placeholder="Unit" required>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="number" class="form-control" name="min_stock_level" placeholder="Min Stock" step="0.01">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-custom w-100"><i class="fas fa-plus me-2"></i>Add</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h2 class="card-title">{{ ds.name }} - Record Transaction</h2>
+                        <form class="transactionForm row g-3" data-ds-id="{{ ds.id }}">
+                            <div class="col-md-3">
+                                <select class="form-select" name="item_id" required>
+                                    <option value="" disabled selected>Select Item</option>
+                                    {% for item in items if item.duty_station_id == ds.id %}
+                                        <option value="{{ item.id }}">{{ item.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select" name="transaction_type" required>
+                                    <option value="" disabled selected>Type</option>
+                                    <option value="IN">IN</option>
+                                    <option value="OUT">OUT</option>
+                                    <option value="ADJUST">ADJUST</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="number" class="form-control" name="quantity" placeholder="Quantity" step="0.01" required>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="number" class="form-control" name="unit_price" placeholder="Unit Price" step="0.01">
+                            </div>
+                            <div class="col-md-2">
+                                <input type="date" class="form-control" name="date" value="{{ current_period }}-01">
+                            </div>
+                            <div class="col-md-1">
+                                <button type="submit" class="btn btn-custom w-100"><i class="fas fa-save me-2"></i>Record</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="card-title">{{ ds.name }} - Inventory</h2>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Category</th>
+                                        <th>Ending Qty</th>
+                                        <th>Ending Value (ETB)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventory-{{ ds.id }}">
+                                    {% for balance in balances if balance.duty_station_id == ds.id %}
+                                        <tr>
+                                            <td>{{ balance.item.name }}</td>
+                                            <td>{{ balance.item.category.name }}</td>
+                                            <td>{{ balance.ending_quantity }}</td>
+                                            <td>{{ balance.ending_value|format_currency }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+
+        <!-- Summary Tab -->
+        <div class="tab-pane fade" id="content-summary" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title">Summary & Analysis</h2>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <select class="form-select" id="summaryDutyStation">
+                                <option value="">All Duty Stations</option>
+                                {% for ds in duty_stations %}
+                                    <option value="{{ ds.id }}">{{ ds.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" id="filterType">
+                                <option value="year">Year</option>
+                                <option value="quarter">Quarter</option>
+                                <option value="month" selected>Month</option>
+                                <option value="daily">Daily</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" id="periodFilter" placeholder="YYYY, YYYY-Qn, YYYY-MM, YYYY-MM-DD">
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-custom w-100" onclick="loadSummary()"><i class="fas fa-chart-bar me-2"></i>Load</button>
+                        </div>
+                        <div class="col-md-1">
+                            <button class="btn btn-custom w-100" onclick="exportExcel()"><i class="fas fa-file-excel me-2"></i>Excel</button>
+                        </div>
+                        <div class="col-md-1">
+                            <button class="btn btn-custom w-100" onclick="exportPDF()"><i class="fas fa-file-pdf me-2"></i>PDF</button>
+                        </div>
+                    </div>
+                    <div id="summaryContent" class="report-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Add Item Forms
+        document.querySelectorAll('.addItemForm').forEach(form => {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                formData.append('duty_station_id', e.target.dataset.dsId);
+                const response = await fetch('/stock_management/add_item', { method: 'POST', body: formData });
+                const result = await response.json();
+                alert(result.message);
+                location.reload();
+            });
+        });
+
+        // Transaction Forms
+        document.querySelectorAll('.transactionForm').forEach(form => {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                formData.append('duty_station_id', e.target.dataset.dsId);
+                const response = await fetch('/stock_management/record_transaction', { method: 'POST', body: formData });
+                const result = await response.json();
+                alert(result.message);
+                location.reload();
+            });
+        });
+
+        // Global Search
+        document.getElementById('globalSearch').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            document.querySelectorAll('.tab-pane tbody tr').forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+    });
+
+    async function uploadExcel() {
+        const fileInput = document.getElementById('excelUpload');
+        if (!fileInput.files.length) {
+            alert('Please select an Excel file.');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        const response = await fetch('/stock_management/upload_excel', { method: 'POST', body: formData });
+        const result = await response.json();
+        alert(result.message || result.error);
+        location.reload();
+    }
+
+    async function loadSummary() {
+        const dutyStationId = document.getElementById('summaryDutyStation').value;
+        const filterType = document.getElementById('filterType').value;
+        const period = document.getElementById('periodFilter').value || new Date().toISOString().slice(0, 7);
+        const response = await fetch(`/stock_management/report?duty_station_id=${dutyStationId}&filter_type=${filterType}&period=${period}`);
+        const data = await response.json();
+        document.getElementById('summaryContent').innerHTML = `
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Duty Station</th>
+                            <th>Beginning Qty</th>
+                            <th>Beginning Value</th>
+                            <th>Ending Qty</th>
+                            <th>Ending Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.data.map(row => `
+                            <tr>
+                                <td>${row.Item}</td>
+                                <td>${row['Duty Station']}</td>
+                                <td>${row['Beginning Qty']}</td>
+                                <td>${row['Beginning Value']}</td>
+                                <td>${row['Ending Qty']}</td>
+                                <td>${row['Ending Value']}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <div class="chart-container mt-4 text-center">
+                <img src="data:image/png;base64,${data.bar_chart}" alt="Stock Chart" class="img-fluid">
+            </div>
+        `;
+    }
+
+    function exportExcel() {
+        const dutyStationId = document.getElementById('summaryDutyStation').value;
+        const filterType = document.getElementById('filterType').value;
+        const period = document.getElementById('periodFilter').value || new Date().toISOString().slice(0, 7);
+        window.location.href = `/stock_management/export_excel?duty_station_id=${dutyStationId}&filter_type=${filterType}&period=${period}`;
+    }
+
+    function exportPDF() {
+        const dutyStationId = document.getElementById('summaryDutyStation').value;
+        const filterType = document.getElementById('filterType').value;
+        const period = document.getElementById('periodFilter').value || new Date().toISOString().slice(0, 7);
+        window.location.href = `/stock_management/export_pdf?duty_station_id=${dutyStationId}&filter_type=${filterType}&period=${period}`;
+    }
+</script>
+{% endblock %}

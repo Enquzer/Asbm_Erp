@@ -1,0 +1,12 @@
+Flask==2.3.2
+Flask-SQLAlchemy==3.0.5
+pandas
+xlsxwriter
+matplotlib
+seaborn
+sqlalchemy
+selenium
+flask_login
+gunicorn
+flask_wtf
+flask_migrate

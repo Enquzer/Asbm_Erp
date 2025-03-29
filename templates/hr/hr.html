@@ -1,0 +1,595 @@
+<!-- templates/hr/hr.html -->
+{% extends "base.html" %}
+{% block content %}
+<!-- Toast Notification Container -->
+<div aria-live="polite" aria-atomic="true" style="position: fixed; top: 20px; right: 20px; z-index: 1050;">
+    <div id="toastContainer"></div>
+</div>
+
+<!-- Hidden CSRF Token -->
+<input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+
+<div class="container mt-5">
+    <h2>HR Management</h2>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Add Employee and Export Buttons -->
+    <div class="mb-3">
+        <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">Add Employee</button>
+        <button class="btn btn-success me-2" id="exportExcelBtn" title="Export to Excel">
+            <i class="bi bi-file-earmark-excel"></i> Export to Excel
+        </button>
+        <button class="btn btn-danger" id="exportPdfBtn" title="Export to PDF">
+            <i class="bi bi-file-earmark-pdf"></i> Export to PDF
+        </button>
+    </div>
+
+    <!-- Filter Form -->
+    <form method="GET" class="mb-3">
+        <div class="row">
+            <div class="col-md-3">
+                <input type="text" name="name" class="form-control" placeholder="Search by Name" value="{{ request.args.get('name', '') }}">
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="start_date" class="form-control" value="{{ request.args.get('start_date', '') }}">
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="end_date" class="form-control" value="{{ request.args.get('end_date', '') }}">
+            </div>
+            <div class="col-md-2">
+                <select name="duty_station_id" class="form-control">
+                    <option value="">All Duty Stations</option>
+                    {% for ds in duty_stations %}
+                        <option value="{{ ds.id }}" {% if request.args.get('duty_station_id')|string == ds.id|string %}selected{% endif %}>{{ ds.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="hire_date" class="form-control" value="{{ request.args.get('hire_date', '') }}">
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary">Filter</button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Employee Table -->
+    <table class="table table-striped" id="employeeTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Title</th>
+                <th>Department</th>
+                <th>Location</th>
+                <th>Phone</th>
+                <th>Duty Station</th>
+                <th>Manager</th>
+                <th>Photo</th>
+                <th>CV</th>
+                <th>Monthly Salary</th>
+                <th>Additional Benefits</th>
+                <th>Hire Date</th>
+                <th>Uploaded Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for employee in employees %}
+            <tr id="employee-row-{{ employee.id }}">
+                <td>{{ employee.id }}</td>
+                <td>{{ employee.name }}</td>
+                <td>{{ employee.title }}</td>
+                <td>{{ employee.department }}</td>
+                <td>{{ employee.location }}</td>
+                <td>{{ employee.phone_number }}</td>
+                <td>{{ employee.duty_station.name if employee.duty_station else 'N/A' }}</td>
+                <td>{{ employee.manager.name if employee.manager else 'None' }}</td>
+                <td>
+                    {% if employee.photo_path %}
+                        <img src="{{ url_for('static', filename=employee.photo_path.replace('static/', '')) }}" alt="Photo" width="50">
+                    {% else %}
+                        No Photo
+                    {% endif %}
+                </td>
+                <td>
+                    {% if employee.cv_path %}
+                        <a href="{{ url_for('static', filename=employee.cv_path.replace('static/', '')) }}" target="_blank">View CV</a>
+                    {% else %}
+                        No CV
+                    {% endif %}
+                </td>
+                <td>{{ employee.monthly_salary }}</td>
+                <td>{{ employee.additional_benefits }}</td>
+                <td>{{ employee.hire_date }}</td>
+                <td>{{ employee.created_at }}</td>
+                <td>
+                    <a href="#" class="text-warning me-2" data-bs-toggle="modal" data-bs-target="#modifyEmployeeModal{{ employee.id }}" title="Modify">
+                        <i class="bi bi-pencil-square"></i>
+                    </a>
+                    <a href="#" class="text-danger remove-employee" data-employee-id="{{ employee.id }}" title="Remove">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                </td>
+            </tr>
+            <!-- Modify Employee Modal -->
+            <div class="modal fade" id="modifyEmployeeModal{{ employee.id }}" tabindex="-1" aria-labelledby="modifyEmployeeModalLabel{{ employee.id }}" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modifyEmployeeModalLabel{{ employee.id }}">Modify Employee</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="modifyEmployeeForm{{ employee.id }}">
+                                <input type="hidden" name="action" value="modify_employee">
+                                <input type="hidden" name="employee_id" value="{{ employee.id }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="name" class="form-label">Name</label>
+                                            <input type="text" name="name" class="form-control" value="{{ employee.name }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="phone_number" class="form-label">Phone Number</label>
+                                            <input type="text" name="phone_number" class="form-control" value="{{ employee.phone_number }}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="monthly_salary" class="form-label">Monthly Salary</label>
+                                            <input type="number" name="monthly_salary" class="form-control" value="{{ employee.monthly_salary }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="additional_benefits" class="form-label">Additional Benefits</label>
+                                            <input type="number" name="additional_benefits" class="form-control" value="{{ employee.additional_benefits }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="address_woreda" class="form-label">Woreda</label>
+                                            <input type="text" name="address_woreda" class="form-control" value="{{ employee.address_woreda }}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="hire_date" class="form-label">Hire Date</label>
+                                            <input type="date" name="hire_date" class="form-control" value="{{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else '' }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="title" class="form-label">Title</label>
+                                            <input type="text" name="title" class="form-control" value="{{ employee.title }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="duty_station_id" class="form-label">Duty Station</label>
+                                            <select name="duty_station_id" class="form-control" required>
+                                                {% for ds in duty_stations %}
+                                                    <option value="{{ ds.id }}" {% if ds.id == employee.duty_station_id %}selected{% endif %}>{{ ds.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Chart Section -->
+    <h3>Employee Distribution and Salary by Duty Station</h3>
+    <form method="GET" class="mb-3">
+        <div class="row">
+            <div class="col-md-3">
+                <input type="date" name="start_date_chart" class="form-control" value="{{ start_date_chart }}">
+            </div>
+            <div class="col-md-3">
+                <input type="date" name="end_date_chart" class="form-control" value="{{ end_date_chart }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary">Update Charts</button>
+            </div>
+        </div>
+    </form>
+    <div class="row">
+        <div class="col-md-6">
+            <h4>Total Salary Paid (Bar Chart)</h4>
+            <canvas id="expenseChart" height="200"></canvas>
+        </div>
+        <div class="col-md-6">
+            <h4>Employee Distribution (% - Pie Chart)</h4>
+            <canvas id="employeePieChart" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- Add Employee Modal -->
+    <div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addEmployeeModalLabel">Add New Employee</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" enctype="multipart/form-data" id="addEmployeeForm">
+                        {{ form.hidden_tag() }}
+                        <input type="hidden" name="action" value="add_employee">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Name</label>
+                                    {{ form.name(class="form-control") }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="birth_date" class="form-label">Date of Birth</label>
+                                    {{ form.birth_date(class="form-control", type="date") }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="gender" class="form-label">Gender</label>
+                                    {{ form.gender(class="form-control") }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="phone_number" class="form-label">Phone Number</label>
+                                    {{ form.phone_number(class="form-control") }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="emergency_contact_name" class="form-label">Emergency Contact Name</label>
+                                    {{ form.emergency_contact_name(class="form-control") }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="emergency_contact_phone" class="form-label">Emergency Contact Phone</label>
+                                    {{ form.emergency_contact_phone(class="form-control") }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="monthly_salary" class="form-label">Monthly Salary</label>
+                                    {{ form.monthly_salary(class="form-control") }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="additional_benefits" class="form-label">Additional Benefits</label>
+                                    {{ form.additional_benefits(class="form-control") }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="address_woreda" class="form-label">Woreda</label>
+                                    {{ form.address_woreda(class="form-control") }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="address_kifle_ketema" class="form-label">Kifle Ketema</label>
+                                    {{ form.address_kifle_ketema(class="form-control") }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="photo" class="form-label">Photo</label>
+                                    {{ form.photo(class="form-control") }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cv" class="form-label">CV (PDF)</label>
+                                    {{ form.cv(class="form-control") }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="location" class="form-label">Location</label>
+                                    {{ form.location(class="form-control") }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="hire_date" class="form-label">Hire Date</label>
+                                    {{ form.hire_date(class="form-control", type="date") }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="title" class="form-label">Title</label>
+                                    {{ form.title(class="form-control") }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="duty_station_id" class="form-label">Duty Station</label>
+                                    {{ form.duty_station_id(class="form-control") }}
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add Employee</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Libraries for Export -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+
+<script>
+// Chart Setup
+const dutyStationData = {{ duty_station_data | tojson }};
+
+// Bar Chart (Total Salary Paid)
+const expenseCtx = document.getElementById('expenseChart').getContext('2d');
+new Chart(expenseCtx, {
+    type: 'bar',
+    data: {
+        labels: Object.keys(dutyStationData),
+        datasets: [{
+            label: 'Total Salary Paid (ETB)',
+            data: Object.values(dutyStationData).map(d => d.expense),
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        scales: {
+            y: { beginAtZero: true }
+        }
+    }
+});
+
+// Pie Chart (Employee Distribution %)
+const totalEmployees = Object.values(dutyStationData).reduce((sum, d) => sum + d.employee_count, 0);
+const pieCtx = document.getElementById('employeePieChart').getContext('2d');
+new Chart(pieCtx, {
+    type: 'pie',
+    data: {
+        labels: Object.keys(dutyStationData),
+        datasets: [{
+            label: 'Employee Distribution (%)',
+            data: Object.values(dutyStationData).map(d => (d.employee_count / totalEmployees) * 100),
+            backgroundColor: [
+                'rgba(255, 99, 132, 0.6)',
+                'rgba(54, 162, 235, 0.6)',
+                'rgba(255, 206, 86, 0.6)',
+                'rgba(75, 192, 192, 0.6)',
+                'rgba(153, 102, 255, 0.6)',
+                'rgba(255, 159, 64, 0.6)'
+            ],
+            borderColor: [
+                'rgba(255, 99, 132, 1)',
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(153, 102, 255, 1)',
+                'rgba(255, 159, 64, 1)'
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.parsed || 0;
+                        return `${label}: ${value.toFixed(2)}%`;
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Toast Notification
+function showToast(message, type = 'success') {
+    const toastContainer = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
+    toastContainer.appendChild(toast);
+    new bootstrap.Toast(toast).show();
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// Clean URL Hash
+function cleanUrlHash() {
+    if (window.location.hash) {
+        history.pushState({}, document.title, window.location.pathname + window.location.search);
+    }
+}
+
+// Handle Modal Events
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('show.bs.modal', cleanUrlHash);
+    modal.addEventListener('hidden.bs.modal', cleanUrlHash);
+});
+
+// Override Modal Trigger to Prevent Hash
+document.querySelectorAll('[data-bs-toggle="modal"]').forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = document.querySelector(link.getAttribute('data-bs-target'));
+        const modal = new bootstrap.Modal(target);
+        modal.show();
+        cleanUrlHash();
+    });
+});
+
+// Handle Remove Employee
+document.querySelectorAll('.remove-employee').forEach(button => {
+    button.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const employeeId = button.getAttribute('data-employee-id');
+        if (!confirm('Are you sure you want to remove this employee?')) return;
+
+        const csrfToken = document.getElementById('csrf_token').value;
+        try {
+            const response = await fetch('/hr/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ action: 'remove_employee', employee_id: employeeId })
+            });
+
+            const data = await response.json();
+            if (response.ok && data.status === 'success') {
+                showToast(data.message);
+                document.getElementById(`employee-row-${employeeId}`).remove();
+            } else {
+                showToast(data.message || 'Failed to remove employee', 'danger');
+            }
+        } catch (error) {
+            showToast(`Error: ${error.message}`, 'danger');
+        }
+    });
+});
+
+// Handle Modify Employee
+document.querySelectorAll('[id^="modifyEmployeeForm"]').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const employeeId = formData.get('employee_id');
+        const csrfToken = formData.get('csrf_token');
+
+        try {
+            const response = await fetch('/hr/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            });
+
+            const data = await response.json();
+            if (response.ok && data.status === 'success') {
+                showToast(data.message);
+                // Update the table row
+                const row = document.getElementById(`employee-row-${employeeId}`);
+                row.cells[1].textContent = data.employee.name;
+                row.cells[2].textContent = data.employee.title;
+                row.cells[3].textContent = data.employee.department;
+                row.cells[4].textContent = data.employee.location || '';
+                row.cells[5].textContent = data.employee.phone_number || '';
+                row.cells[6].textContent = data.employee.duty_station;
+                row.cells[7].textContent = data.employee.manager;
+                row.cells[10].textContent = data.employee.monthly_salary;
+                row.cells[11].textContent = data.employee.additional_benefits;
+                row.cells[12].textContent = data.employee.hire_date;
+                row.cells[13].textContent = data.employee.created_at;
+
+                // Highlight the updated row for better visibility
+                row.classList.add('table-success');
+                setTimeout(() => row.classList.remove('table-success'), 2000);
+
+                // Close the modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById(`modifyEmployeeModal${employeeId}`));
+                modal.hide();
+                cleanUrlHash();
+            } else {
+                showToast(data.message || 'Failed to modify employee', 'danger');
+            }
+        } catch (error) {
+            showToast(`Error: ${error.message}`, 'danger');
+        }
+    });
+});
+
+// Handle Add Employee
+document.getElementById('addEmployeeForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const csrfToken = document.getElementById('csrf_token').value;
+
+    try {
+        const response = await fetch('/hr/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+        if (response.ok && data.status === 'success') {
+            showToast(data.message);
+            e.target.reset();
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addEmployeeModal'));
+            modal.hide();
+            cleanUrlHash();
+            location.reload(); // Refresh table
+        } else {
+            showToast(data.message || 'Failed to add employee', 'danger');
+        }
+    } catch (error) {
+        showToast(`Error: ${error.message}`, 'danger');
+    }
+});
+
+// Export to Excel
+document.getElementById('exportExcelBtn').addEventListener('click', () => {
+    const table = document.getElementById('employeeTable');
+    const rows = Array.from(table.rows);
+    const data = rows.map(row => {
+        const cells = Array.from(row.cells);
+        return cells.slice(0, -1).map(cell => {
+            if (cell.querySelector('img')) return 'Photo Available';
+            if (cell.querySelector('a')) return 'CV Available';
+            return cell.textContent.trim();
+        });
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Employees');
+    XLSX.writeFile(wb, 'employees.xlsx');
+});
+
+// Export to PDF
+document.getElementById('exportPdfBtn').addEventListener('click', () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.text('Employee List', 14, 20);
+    doc.autoTable({
+        html: '#employeeTable',
+        startY: 30,
+        columns: [
+            { header: 'ID', dataKey: 'ID' },
+            { header: 'Name', dataKey: 'Name' },
+            { header: 'Title', dataKey: 'Title' },
+            { header: 'Department', dataKey: 'Department' },
+            { header: 'Location', dataKey: 'Location' },
+            { header: 'Phone', dataKey: 'Phone' },
+            { header: 'Duty Station', dataKey: 'Duty Station' },
+            { header: 'Manager', dataKey: 'Manager' },
+            { header: 'Photo', dataKey: 'Photo' },
+            { header: 'CV', dataKey: 'CV' },
+            { header: 'Monthly Salary', dataKey: 'Monthly Salary' },
+            { header: 'Additional Benefits', dataKey: 'Additional Benefits' },
+            { header: 'Hire Date', dataKey: 'Hire Date' },
+            { header: 'Uploaded Date', dataKey: 'Uploaded Date' }
+        ],
+        didParseCell: (data) => {
+            if (data.column.dataKey === 'Photo' && data.cell.text.includes('img')) {
+                data.cell.text = ['Photo Available'];
+            }
+            if (data.column.dataKey === 'CV' && data.cell.text.includes('a')) {
+                data.cell.text = ['CV Available'];
+            }
+        }
+    });
+
+    doc.save('employees.pdf');
+});
+</script>
+{% endblock %}

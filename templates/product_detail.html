@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Product Details</h1>
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">{{ product.name }}</h5>
+        <p><strong>Product Code:</strong> {{ product.product_code }}</p>
+        <p><strong>Type:</strong> {{ product.product_type }}</p>
+        <p><strong>Description:</strong> {{ product.description or 'N/A' }}</p>
+        <p><strong>Selling Price:</strong> {{ product.selling_price | format_currency }}</p>
+        <p><strong>Cost:</strong> {{ product.cost | format_currency }}</p>
+        <p><strong>Stock Quantity:</strong> {{ product.stock_quantity }}</p>
+        <p><strong>SKU:</strong> {{ product.sku }}</p>
+        <p><strong>Supplier:</strong> {{ product.supplier or 'N/A' }}</p>
+        <p><strong>Batch Number:</strong> {{ product.batch_number or 'N/A' }}</p>
+        {% if product.image_path %}
+            <p><strong>Image:</strong></p>
+            <img src="{{ url_for('static', filename=product.image_path.split('static/')[1]) }}" alt="{{ product.name }}" style="max-width: 200px;">
+        {% endif %}
+    </div>
+</div>
+
+<h2 class="mt-4">Product Plans</h2>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Plan Type</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Planned Quantity</th>
+            <th>Actual Quantity</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for plan in plans %}
+        <tr>
+            <td>{{ plan.id }}</td>
+            <td>{{ plan.plan_type }}</td>
+            <td>{{ plan.start_date }}</td>
+            <td>{{ plan.end_date }}</td>
+            <td>{{ plan.planned_quantity }}</td>
+            <td>{{ plan.actual_quantity }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="6">No plans found for this product.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('product.products') }}" class="btn btn-secondary">Back to Products</a>
+{% endblock %}

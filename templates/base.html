@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- jQuery for AJAX -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Ensure the HTML and body take up the full viewport height */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Body styling (no longer needs flexbox for sticky footer) */
+        body {
+            min-height: 100vh;
+        }
+
+        /* Navbar styling */
+        .navbar {
+            background-color: #c0392b; /* Match the red color from the screenshot */
+        }
+
+        /* Main content area with padding to avoid overlap with fixed footer */
+        .container {
+            width: 100%;
+            max-width: none;
+            padding: 20px;
+            padding-bottom: 120px; /* Adjust based on footer height */
+        }
+
+        /* Navigation item styling */
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 10px;
+        }
+
+        /* Navigation link icons */
+        .nav-link i {
+            display: block;
+            font-size: 1.2em;
+            margin-bottom: 5px;
+        }
+
+        /* Navigation link styling */
+        .nav-link {
+            padding: 0 !important;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* User profile image styling */
+        .user-profile-img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 10px;
+            border: 2px solid #fff;
+        }
+
+        /* Dropdown menu positioning */
+        .dropdown-menu {
+            right: 0;
+            left: auto;
+        }
+
+        /* Footer styling */
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #2c3e50; /* Match the dark color from the screenshot */
+            color: white;
+            text-align: center;
+            padding: 15px 0;
+        }
+
+        /* Contact information container */
+        .contact-info {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        /* Individual contact item */
+        .contact-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.9em;
+        }
+
+        /* Icon styling */
+        .contact-item i {
+            margin-right: 8px;
+            font-size: 1em;
+            color: #ffffff;
+        }
+
+        /* Link styling */
+        .contact-item a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        .contact-item a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .contact-info {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .contact-item {
+                font-size: 0.85em;
+            }
+            .container {
+                padding-bottom: 180px; /* More padding on smaller screens due to stacked footer items */
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('index') }}"><i class="fas fa-industry me-2"></i>ASBM ERP</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.has_permission('dashboard') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'dashboard.dashboard' %}active{% endif %}" href="{{ url_for('dashboard.dashboard') }}">
+                                    <i class="fas fa-tachometer-alt"></i>Dashboard
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if current_user.has_permission('orders') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'order.order_list' %}active{% endif %}" href="{{ url_for('order.order_list') }}">
+                                    <i class="fas fa-shopping-cart"></i>Orders
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if current_user.has_permission('products') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'product.products' %}active{% endif %}" href="{{ url_for('product.products') }}">
+                                    <i class="fas fa-box"></i>Products
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if current_user.has_permission('customers') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'product.customers' %}active{% endif %}" href="{{ url_for('product.customers') }}">
+                                    <i class="fas fa-users"></i>Customers
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if current_user.has_permission('hr') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'hr.hr' %}active{% endif %}" href="{{ url_for('hr.hr') }}">
+                                    <i class="fas fa-user-tie"></i>HR
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if current_user.has_permission('notifications') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'notifications.notifications' %}active{% endif %}" href="{{ url_for('notifications.notifications') }}">
+                                    <i class="fas fa-bell"></i>Notifications
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if current_user.has_permission('planning') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'planning.planning' %}active{% endif %}" href="{{ url_for('planning.planning') }}">
+                                    <i class="fas fa-calendar-alt"></i>Planning
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if current_user.has_permission('production') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'production.production' %}active{% endif %}" href="{{ url_for('production.production') }}">
+                                    <i class="fas fa-cogs"></i>Production
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if current_user.has_permission('project') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'project.project' %}active{% endif %}" href="{{ url_for('project.project') }}">
+                                    <i class="fas fa-project-diagram"></i>Project
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if current_user.has_permission('purchasing') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'purchasing.purchasing' %}active{% endif %}" href="{{ url_for('purchasing.purchasing') }}">
+                                    <i class="fas fa-shopping-bag"></i>Purchasing
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'purchasing.purchase_request' %}active{% endif %}" href="{{ url_for('purchasing.purchase_request') }}">
+                                    <i class="fas fa-file-alt"></i>Purchase Requests
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if current_user.has_permission('stock_management') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'stock_management.stock_management' %}active{% endif %}" href="{{ url_for('stock_management.stock_management') }}">
+                                    <i class="fas fa-warehouse"></i>Stock Management
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if current_user.has_permission('sales') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'sales.sales' %}active{% endif %}" href="{{ url_for('sales.sales') }}">
+                                    <i class="fas fa-chart-line"></i>Sales
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if current_user.has_permission('system_setup') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'system_setup.system_setup' %}active{% endif %}" href="{{ url_for('system_setup.system_setup') }}">
+                                    <i class="fas fa-tools"></i>System Setup
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if current_user.has_permission('user_management') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'user_management.manage_users' %}active{% endif %}" href="{{ url_for('user_management.manage_users') }}">
+                                    <i class="fas fa-user-cog"></i>User Management
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if current_user.has_permission('chat') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'chat.chat' %}active{% endif %}" href="{{ url_for('chat.chat') }}">
+                                    <i class="fas fa-comments"></i>Chat
+                                </a>
+                            </li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-center">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <img src="{{ url_for('static', filename='images/uploads/' + (current_user.profile_picture or 'placeholder_user.jpg')) }}" alt="User Profile" class="user-profile-img">
+                                <span>{{ current_user.username }}</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('user_management.profile') }}"><i class="fas fa-user me-2"></i>Profile</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('user_management.logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <label class="dropdown-item">Theme Color:
+                                        <input type="color" id="themeColor" value="#2c3e50">
+                                    </label>
+                                </li>
+                                <li>
+                                    <label class="dropdown-item">Font Color:
+                                        <input type="color" id="fontColor" value="#212529">
+                                    </label>
+                                </li>
+                                <li>
+                                    <label class="dropdown-item">Font Size:
+                                        <input type="range" id="fontSize" min="12" max="24" value="16">
+                                    </label>
+                                </li>
+                                <li>
+                                    <button class="dropdown-item" id="toggleMode">
+                                        <span id="modeIcon"><i class="fas fa-moon"></i></span> Toggle Mode
+                                    </button>
+                                </li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'user_management.login' %}active{% endif %}" href="{{ url_for('user_management.login') }}">
+                                <i class="fas fa-sign-in-alt"></i>Login
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer>
+        <p>© 2025 ASBM ERP. All rights reserved.</p>
+        <div class="contact-info">
+            <div class="contact-item">
+                <i class="fas fa-map-marker-alt"></i>
+                Nisser Building 7th Floor, Cape Verde Street, Addis Ababa, Ethiopia
+            </div>
+            <div class="contact-item">
+                <i class="fas fa-phone"></i>
+                +251-116-685-888
+            </div>
+            <div class="contact-item">
+                <i class="fas fa-fax"></i>
+                +251-116-685-999
+            </div>
+            <div class="contact-item">
+                <i class="fas fa-envelope"></i>
+                <a href="mailto:info@asbm.et">info@asbm.et</a>
+            </div>
+            <div class="contact-item">
+                <i class="fas fa-envelope"></i>
+                <a href="www.asbm.et">www.asbm.et</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

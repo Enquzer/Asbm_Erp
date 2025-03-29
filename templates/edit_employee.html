@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Edit Employee</h1>
+<form method="POST">
+    <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" class="form-control" id="name" name="name" value="{{ employee.name }}" required>
+    </div>
+    <div class="form-group">
+        <label for="address_woreda">Address Woreda</label>
+        <input type="text" class="form-control" id="address_woreda" name="address_woreda" value="{{ employee.address_woreda or '' }}">
+    </div>
+    <div class="form-group">
+        <label for="address_kifle_ketema">Address Kifle Ketema</label>
+        <input type="text" class="form-control" id="address_kifle_ketema" name="address_kifle_ketema" value="{{ employee.address_kifle_ketema or '' }}">
+    </div>
+    <div class="form-group">
+        <label for="phone_number">Phone Number</label>
+        <input type="text" class="form-control" id="phone_number" name="phone_number" value="{{ employee.phone_number or '' }}">
+    </div>
+    <div class="form-group">
+        <label for="emergency_contact_name">Emergency Contact Name</label>
+        <input type="text" class="form-control" id="emergency_contact_name" name="emergency_contact_name" value="{{ employee.emergency_contact_name or '' }}">
+    </div>
+    <div class="form-group">
+        <label for="emergency_contact_phone">Emergency Contact Phone</label>
+        <input type="text" class="form-control" id="emergency_contact_phone" name="emergency_contact_phone" value="{{ employee.emergency_contact_phone or '' }}">
+    </div>
+    <div class="form-group">
+        <label for="location">Location</label>
+        <input type="text" class="form-control" id="location" name="location" value="{{ employee.location or '' }}">
+    </div>
+    <div class="form-group">
+        <label for="internal_notes">Internal Notes</label>
+        <textarea class="form-control" id="internal_notes" name="internal_notes">{{ employee.internal_notes or '' }}</textarea>
+    </div>
+    <div class="form-group">
+        <label for="duty_station_id">Duty Station</label>
+        <select class="form-control" id="duty_station_id" name="duty_station_id" required>
+            {% for duty_station in duty_stations %}
+                <option value="{{ duty_station.duty_station_id }}" {% if employee.duty_station_id == duty_station.duty_station_id %}selected{% endif %}>{{ duty_station.duty_station_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="title">Title</label>
+        <input type="text" class="form-control" id="title" name="title" value="{{ employee.title }}" required>
+    </div>
+    <div class="form-group">
+        <label for="gender">Gender</label>
+        <select class="form-control" id="gender" name="gender" required>
+            <option value="Male" {% if employee.gender == 'Male' %}selected{% endif %}>Male</option>
+            <option value="Female" {% if employee.gender == 'Female' %}selected{% endif %}>Female</option>
+            <option value="Other" {% if employee.gender == 'Other' %}selected{% endif %}>Other</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="department">Department</label>
+        <input type="text" class="form-control" id="department" name="department" value="{{ employee.department }}" required>
+    </div>
+    <div class="form-group">
+        <label for="birth_date">Birth Date</label>
+        <input type="date" class="form-control" id="birth_date" name="birth_date" value="{{ employee.birth_date.strftime('%Y-%m-%d') }}" required>
+    </div>
+    <div class="form-group">
+        <label for="hire_date">Hire Date</label>
+        <input type="date" class="form-control" id="hire_date" name="hire_date" value="{{ employee.hire_date.strftime('%Y-%m-%d') }}" required>
+    </div>
+    <div class="form-group">
+        <label for="contract_end_date">Contract End Date</label>
+        <input type="date" class="form-control" id="contract_end_date" name="contract_end_date" value="{{ employee.contract_end_date.strftime('%Y-%m-%d') if employee.contract_end_date else '' }}">
+    </div>
+    <div class="form-group">
+        <label for="seniority">Seniority (Years)</label>
+        <input type="number" class="form-control" id="seniority" name="seniority" value="{{ employee.seniority or 0 }}">
+    </div>
+    <div class="form-group">
+        <label for="management_status">Management Status</label>
+        <select class="form-control" id="management_status" name="management_status" required>
+            <option value="Active" {% if employee.management_status == 'Active' %}selected{% endif %}>Active</option>
+            <option value="Inactive" {% if employee.management_status == 'Inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="job_grade">Job Grade</label>
+        <input type="text" class="form-control" id="job_grade" name="job_grade" value="{{ employee.job_grade }}" required>
+    </div>
+    <div class="form-group">
+        <label for="step">Step</label>
+        <input type="number" class="form-control" id="step" name="step" value="{{ employee.step }}" required>
+    </div>
+    <div class="form-group">
+        <label for="basic_salary">Basic Salary</label>
+        <input type="number" step="0.01" class="form-control" id="basic_salary" name="basic_salary" value="{{ employee.basic_salary }}">
+    </div>
+    <div class="form-group">
+        <label for="monthly_salary">Monthly Salary</label>
+        <input type="number" step="0.01" class="form-control" id="monthly_salary" name="monthly_salary" value="{{ employee.monthly_salary }}">
+    </div>
+    <div class="form-group">
+        <label for="additional_benefits">Additional Benefits</label>
+        <input type="number" step="0.01" class="form-control" id="additional_benefits" name="additional_benefits" value="{{ employee.additional_benefits or 0.0 }}">
+    </div>
+    <div class="form-group">
+        <label for="travel_allowance">Travel Allowance</label>
+        <input type="number" step="0.01" class="form-control" id="travel_allowance" name="travel_allowance" value="{{ employee.travel_allowance or 0.0 }}">
+    </div>
+    <div class="form-group">
+        <label for="other_allowance">Other Allowance</label>
+        <input type="number" step="0.01" class="form-control" id="other_allowance" name="other_allowance" value="{{ employee.other_allowance or 0.0 }}">
+    </div>
+    <div class="form-group">
+        <label for="non_taxable_allowance">Non-Taxable Allowance</label>
+        <input type="number" step="0.01" class="form-control" id="non_taxable_allowance" name="non_taxable_allowance" value="{{ employee.non_taxable_allowance or 0.0 }}">
+    </div>
+    <div class="form-group">
+        <label for="other_deduction">Other Deduction</label>
+        <input type="number" step="0.01" class="form-control" id="other_deduction" name="other_deduction" value="{{ employee.other_deduction or 0.0 }}">
+    </div>
+    <div class="form-group">
+        <label for="lunch_deduction_employee">Lunch Deduction (Employee)</label>
+        <input type="number" step="0.01" class="form-control" id="lunch_deduction_employee" name="lunch_deduction_employee" value="{{ employee.lunch_deduction_employee or 0.0 }}">
+    </div>
+    <div class="form-group">
+        <label for="lunch_deduction_court">Lunch Deduction (Court)</label>
+        <input type="number" step="0.01" class="form-control" id="lunch_deduction_court" name="lunch_deduction_court" value="{{ employee.lunch_deduction_court or 0.0 }}">
+    </div>
+    <button type="submit" class="btn btn-primary">Update Employee</button>
+    <a href="{{ url_for('hr.hr') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

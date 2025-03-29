@@ -1,0 +1,229 @@
+:root {
+    --font-size: 16px;
+    --primary-color: #2c3e50;
+    --background-color: #f5f7fa;
+    --text-color: #212529;
+    --button-color: #ff4d4d;
+}
+
+body {
+    font-size: var(--font-size);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    margin: 0;
+    padding: 0;
+    transition: background-color 0.3s, color 0.3s;
+    line-height: 1.6;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap');
+
+.navbar {
+    background-color: var(--primary-color) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 10px 20px;
+}
+
+.navbar-brand,
+.nav-link {
+    color: white !important; /* Override for navbar links */
+    font-weight: 500;
+    font-size: var(--font-size);
+}
+
+.nav-link:hover {
+    color: #ddd !important;
+}
+
+.navbar-text {
+    color: white;
+    font-size: var(--font-size);
+}
+
+.card {
+    background-color: white;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.card-title {
+    font-size: calc(var(--font-size) + 2px);
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.card-text {
+    margin: 5px 0;
+    color: #7f8c8d;
+    font-size: var(--font-size);
+}
+
+.btn-custom {
+    background-color: var(--button-color);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+    font-size: var(--font-size);
+}
+
+.btn-custom:hover {
+    background-color: #e60000;
+}
+
+body.dark-mode {
+    --background-color: #1a1a1a;
+    --text-color: #e0e0e0;
+    --primary-color: #444;
+}
+
+body.dark-mode .navbar {
+    background-color: var(--primary-color) !important;
+}
+
+body.dark-mode .card {
+    background-color: #2a2a2a;
+    color: var(--text-color);
+}
+
+body.dark-mode .card-title {
+    color: var(--text-color);
+}
+
+body.dark-mode .card-text {
+    color: #b0b0b0;
+}
+
+body.dark-mode .table {
+    color: var(--text-color);
+}
+
+body.dark-mode .table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+    background-color: #333;
+    color: var(--text-color);
+    border-color: #555;
+}
+
+.dropdown-menu {
+    background-color: var(--primary-color);
+    color: var(--text-color);
+}
+
+.dropdown-item {
+    color: white;
+    font-size: var(--font-size);
+}
+
+.dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.form-control, .form-select {
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.3s ease;
+    font-size: var(--font-size);
+    color: var(--text-color);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 5px rgba(44, 62, 80, 0.3);
+}
+
+.table {
+    border-radius: 4px;
+    overflow: hidden;
+    color: var(--text-color);
+}
+
+.table th, .table td {
+    vertical-align: middle;
+    font-size: var(--font-size);
+    color: var(--text-color); /* Ensure table text updates */
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(44, 62, 80, 0.1);
+}
+
+.chart-container {
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.img-fluid {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+.alert {
+    font-size: var(--font-size);
+    color: var(--text-color);
+}
+
+.nav-tabs {
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.nav-tabs .nav-link {
+    color: var(--text-color); /* Use the dynamic text color */
+    background-color: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-size: var(--font-size); /* Use the dynamic font size */
+    padding: 10px 15px;
+    transition: color 0.3s ease, border-bottom-color 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--primary-color); /* Use the dynamic primary color on hover */
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--primary-color); /* Use the dynamic primary color for active tab */
+    background-color: rgba(var(--primary-color), 0.1);
+    border-bottom: 2px solid var(--primary-color);
+    font-weight: 600;
+}
+
+body.dark-mode .nav-tabs {
+    border-bottom: 2px solid var(--text-color);
+}
+
+body.dark-mode .nav-tabs .nav-link {
+    color: var(--text-color); /* Ensure text color updates in dark mode */
+    background-color: transparent;
+}
+
+body.dark-mode .nav-tabs .nav-link:hover {
+    color: var(--text-color);
+    border-bottom: 2px solid var(--text-color);
+}
+
+body.dark-mode .nav-tabs .nav-link.active {
+    color: var(--text-color);
+    background-color: rgba(var(--text-color), 0.1);
+    border-bottom: 2px solid var(--text-color);
+}

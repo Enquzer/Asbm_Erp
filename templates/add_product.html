@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block title %}Add Product{% endblock %}
+{% block content %}
+<div class="container-fluid d-flex justify-content-center align-items-center min-vh-100">
+    <div class="form-card">
+        <h1 class="text-center mb-4">Add Product</h1>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Add Product Form -->
+        <form method="POST" enctype="multipart/form-data" id="addProductForm">
+            {{ form.hidden_tag() }} <!-- Adds CSRF token -->
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="name">Product Name:</label>
+                    {{ form.name(class="form-control", required=True) }}
+                </div>
+
+                <div class="form-group">
+                    <label for="product_type">Product Type:</label>
+                    {{ form.product_type(class="form-control", onchange="updateParameters()", required=True) }}
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description:</label>
+                    {{ form.description(class="form-control") }}
+                </div>
+
+                <div class="form-group">
+                    <label for="selling_price">Selling Price:</label>
+                    {{ form.selling_price(class="form-control", required=True) }}
+                </div>
+
+                <div class="form-group">
+                    <label for="cost">Cost:</label>
+                    {{ form.cost(class="form-control", required=True) }}
+                </div>
+
+                <div class="form-group">
+                    <label for="customer_id">Customer:</label>
+                    {{ form.customer_id(class="form-control") }}
+                </div>
+
+                <div class="form-group">
+                    <label for="supplier">Supplier:</label>
+                    {{ form.supplier(class="form-control") }}
+                </div>
+
+                <div class="form-group">
+                    <label for="batch_number">Batch Number:</label>
+                    {{ form.batch_number(class="form-control") }}
+                </div>
+
+                <div class="form-group">
+                    <label for="sku">SKU:</label>
+                    {{ form.sku(class="form-control", required=True) }}
+                </div>
+
+                <div class="form-group">
+                    <label for="stock_quantity">Stock Quantity:</label>
+                    {{ form.stock_quantity(class="form-control", required=True) }}
+                </div>
+
+                <div class="form-group">
+                    <label for="image">Product Image:</label>
+                    {{ form.image(class="form-control") }}
+                </div>
+
+                <div id="parameters_container" class="form-group"></div>
+            </div>
+
+            <div class="text-center mt-4">
+                <input type="submit" value="Add Product" class="btn btn-custom">
+            </div>
+        </form>
+
+        <div class="text-center mt-3">
+            <a href="{{ url_for('product.products') }}" class="back-link">Back to Products</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        background: linear-gradient(135deg, #2C2F33, #7289DA);
+        color: #fff;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .form-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 2rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        width: 100%;
+        max-width: 900px;
+        margin: 1rem;
+    }
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    label {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #e0e0e0;
+    }
+    .form-control {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid #bdc3c7;
+        border-radius: 8px;
+        padding: 0.75rem;
+        font-size: 0.9rem;
+        color: #34495e;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        width: 100%;
+    }
+    .form-control:focus {
+        border-color: #7289DA;
+        box-shadow: 0 0 8px rgba(114, 137, 218, 0.3);
+        outline: none;
+    }
+    .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .checkbox-group label {
+        font-weight: 400;
+        margin-left: 0.3rem;
+        color: #e0e0e0;
+    }
+    .btn-custom {
+        background-color: #7289DA;
+        color: #fff;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 500;
+        transition: background-color 0.3s ease, transform 0.1s ease;
+    }
+    .btn-custom:hover {
+        background-color: #5f6da8;
+        transform: translateY(-2px);
+    }
+    .btn-custom:active {
+        transform: translateY(0);
+    }
+    .flash-message {
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+    }
+    .flash-message.danger {
+        background: #fadbd8;
+        color: #c0392b;
+    }
+    .flash-message.success {
+        background: #d4efdf;
+        color: #27ae60;
+    }
+    .back-link {
+        color: #a0b3f7;
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: color 0.3s ease;
+    }
+    .back-link:hover {
+        color: #d0d9ff;
+    }
+    @media (max-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+        .form-card {
+            margin: 0.5rem;
+            padding: 1.5rem;
+        }
+    }
+</style>
+
+<script>
+    const sizeRanges = {
+        'Garment': {
+            'Men': ['S', 'M', 'L', 'XL', 'XXL'],
+            'Women': ['XS', 'S', 'M', 'L', 'XL'],
+            'Kids': ['2T', '3T', '4T', '5-6', '7-8'],
+            'Newborn': ['0-3M', '3-6M', '6-9M', '9-12M']
+        }
+    };
+
+    function updateParameters() {
+        const productType = document.getElementById('product_type').value;
+        const container = document.getElementById('parameters_container');
+        container.innerHTML = '';
+
+        fetch(`/product/get_parameters?type=${productType}`)
+            .then(response => response.json())
+            .then(parameters => {
+                parameters.forEach(param => {
+                    const div = document.createElement('div');
+                    div.className = 'form-group';
+                    const label = document.createElement('label');
+                    label.textContent = param.label;
+                    label.setAttribute('for', param.name);
+
+                    if (param.type === 'select') {
+                        const select = document.createElement('select');
+                        select.name = param.name;
+                        select.id = param.name;
+                        select.className = 'form-control';
+                        select.onchange = () => updateSizeRangeOptions();
+                        param.options.forEach(option => {
+                            const opt = document.createElement('option');
+                            opt.value = option;
+                            opt.textContent = option;
+                            select.appendChild(opt);
+                        });
+                        div.appendChild(label);
+                        div.appendChild(select);
+                    } else if (param.type === 'checkbox') {
+                        const checkboxGroup = document.createElement('div');
+                        checkboxGroup.className = 'checkbox-group';
+                        checkboxGroup.id = `${param.name}_group`;
+                        div.appendChild(label);
+                        div.appendChild(checkboxGroup);
+                    } else {
+                        const input = document.createElement('input');
+                        input.type = param.type;
+                        input.name = param.name;
+                        input.id = param.name;
+                        input.className = 'form-control';
+                        if (param.type === 'number') input.step = 'any';
+                        div.appendChild(label);
+                        div.appendChild(input);
+                    }
+                    container.appendChild(div);
+                });
+                if (productType === 'Garment') updateSizeRangeOptions();
+            })
+            .catch(error => {
+                console.error('Error fetching parameters:', error);
+            });
+    }
+
+    function updateSizeRangeOptions() {
+        const targetGroup = document.getElementById('target_group') ? document.getElementById('target_group').value : 'Men';
+        const sizeRangeGroup = document.getElementById('size_range_group');
+        if (!sizeRangeGroup) return;
+
+        sizeRangeGroup.innerHTML = '';
+        const sizes = sizeRanges['Garment'][targetGroup] || [];
+        sizes.forEach(option => {
+            const checkboxDiv = document.createElement('div');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = 'size_range';
+            checkbox.value = option;
+            checkbox.id = `size_range_${option.replace(/\s+/g, '')}`;
+
+            const checkboxLabel = document.createElement('label');
+            checkboxLabel.htmlFor = `size_range_${option.replace(/\s+/g, '')}`;
+            checkboxLabel.textContent = option;
+
+            checkboxDiv.appendChild(checkbox);
+            checkboxDiv.appendChild(checkboxLabel);
+            sizeRangeGroup.appendChild(checkboxDiv);
+        });
+    }
+
+    window.onload = updateParameters;
+</script>
+{% endblock %}

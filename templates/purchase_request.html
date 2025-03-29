@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}Purchase Requests{% endblock %}
+{% block content %}
+    <h1 class="mb-4">Purchase Requests</h1>
+
+    <!-- Form to Submit New Purchase Request -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Submit New Purchase Request</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('dashboard.submit_purchase_request') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label>Item Name</label>
+                        <input type="text" class="form-control" name="item_name" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Description</label>
+                        <input type="text" class="form-control" name="description">
+                    </div>
+                    <div class="col-md-2">
+                        <label>Quantity</label>
+                        <input type="number" class="form-control" name="quantity" value="1" min="1" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label>Unit of Measure</label>
+                        <select class="form-select" name="unit_of_measure" required>
+                            <option value="Pieces">Pieces</option>
+                            <option value="Kg">Kg</option>
+                            <option value="Liters">Liters</option>
+                            <option value="Meters">Meters</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label>Expected Delivery</label>
+                        <input type="date" class="form-control" name="expected_delivery_date" required>
+                    </div>
+                    <div class="col-md-12">
+                        <button type="submit" class="btn btn-primary">Submit Request</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Table of Existing Purchase Requests -->
+    <h5>Existing Purchase Requests</h5>
+    {% if purchase_requests %}
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Request Code</th>
+                    <th>Item Name</th>
+                    <th>Department</th>
+                    <th>Description</th>
+                    <th>Quantity</th>
+                    <th>Expected Delivery</th>
+                    <th>Status</th>
+                    <th>Requested By</th>
+                    <th>Created At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for req in purchase_requests %}
+                    <tr>
+                        <td>{{ req.request_code }}</td>
+                        <td>{{ req.item_name }}</td>
+                        <td>{{ req.dept_name }}</td>
+                        <td>{{ req.description or 'N/A' }}</td>
+                        <td>{{ req.quantity }} {{ req.unit_of_measure }}</td>
+                        <td>{{ req.expected_delivery_date }}</td>
+                        <td>
+                            {% if req.status == "Fulfilled" %}
+                                <i class="bi bi-check-circle-fill text-success" title="Fulfilled"></i> {{ req.status }}
+                            {% elif req.status == "Pending" %}
+                                <i class="bi bi-hourglass-split text-warning" title="Pending"></i> {{ req.status }}
+                            {% elif req.status == "Rejected" %}
+                                <i class="bi bi-x-circle-fill text-danger" title="Rejected"></i> {{ req.status }}
+                            {% else %}
+                                {{ req.status }}
+                            {% endif %}
+                        </td>
+                        <td>{{ req.requested_by.username }}</td>
+                        <td>{{ req.created_at }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No purchase requests submitted yet.</p>
+    {% endif %}
+{% endblock %}

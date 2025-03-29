@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Production Report{% endblock %}
+{% block content %}
+    <h2>Production Report ({{ period }})</h2>
+    <form method="GET" action="{{ url_for('production.production', tab='reporting') }}" class="mb-3">
+        <select name="period" class="form-select" onchange="this.form.submit()">
+            <option value="Daily" {% if period == 'Daily' %}selected{% endif %}>Daily</option>
+            <option value="Weekly" {% if period == 'Weekly' %}selected{% endif %}>Weekly</option>
+            <option value="Monthly" {% if period == 'Monthly' %}selected{% endif %}>Monthly</option>
+            <option value="Quarterly" {% if period == 'Quarterly' %}selected{% endif %}>Quarterly</option>
+            <option value="Semi-Annual" {% if period == 'Semi-Annual' %}selected{% endif %}>Semi-Annual</option>
+        </select>
+    </form>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                {% for header in data[0] %}
+                    <th>{{ header }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data[1:] %}
+                <tr>
+                    {% for cell in row %}
+                        <td>{{ cell }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{{ url_for('production.reporting', period=period, export='pdf') }}" class="btn btn-primary">Export to PDF</a>
+    <h3>Summary</h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Factory</th>
+                <th>Plan</th>
+                <th>Actual</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for factory, values in summary.items() %}
+                <tr>
+                    <td>{{ factory }}</td>
+                    <td>{{ values.plan }}</td>
+                    <td>{{ values.actual }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
