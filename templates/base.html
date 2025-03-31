@@ -4,41 +4,54 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock %}</title>
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome for Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <!-- jQuery for AJAX -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        /* Ensure the HTML and body take up the full viewport height */
+        :root {
+            --navbar-bg: #c0392b;
+            --body-bg: #f8f9fa;
+            --body-color: #212529;
+            --footer-bg: #2c3e50;
+            --link-color: #212529;
+            --link-hover: #d4d4d4;
+        }
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
         }
-
-        /* Body styling (no longer needs flexbox for sticky footer) */
         body {
             min-height: 100vh;
+            background-color: var(--body-bg);
+            color: var(--body-color);
+            transition: background-color 0.3s, color 0.3s;
         }
-
-        /* Navbar styling */
         .navbar {
-            background-color: #c0392b; /* Match the red color from the screenshot */
+            background-color: var(--navbar-bg);
+            transition: background-color 0.3s;
         }
-
-        /* Main content area with padding to avoid overlap with fixed footer */
+        .navbar-brand {
+            color: #ffffff !important;
+        }
+        .nav-link {
+            color: var(--link-color) !important;
+        }
+        .nav-link:hover {
+            color: var(--link-hover) !important;
+        }
+        .nav-link.active {
+            color: #ffd700 !important;
+            font-weight: bold;
+        }
         .container {
             width: 100%;
             max-width: none;
             padding: 20px;
-            padding-bottom: 120px; /* Adjust based on footer height */
+            padding-bottom: 120px;
         }
-
-        /* Navigation item styling */
         .nav-item {
             display: flex;
             flex-direction: column;
@@ -47,23 +60,17 @@
             text-align: center;
             padding: 10px;
         }
-
-        /* Navigation link icons */
         .nav-link i {
             display: block;
             font-size: 1.2em;
             margin-bottom: 5px;
         }
-
-        /* Navigation link styling */
         .nav-link {
             padding: 0 !important;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
-
-        /* User profile image styling */
         .user-profile-img {
             width: 40px;
             height: 40px;
@@ -72,26 +79,26 @@
             margin-right: 10px;
             border: 2px solid #fff;
         }
-
-        /* Dropdown menu positioning */
         .dropdown-menu {
             right: 0;
             left: auto;
+            background-color: var(--body-bg);
+            color: var(--body-color);
         }
-
-        /* Footer styling */
+        .dropdown-item {
+            color: var(--body-color);
+        }
         footer {
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
-            background-color: #2c3e50; /* Match the dark color from the screenshot */
+            background-color: var(--footer-bg);
             color: white;
             text-align: center;
             padding: 15px 0;
+            transition: background-color 0.3s;
         }
-
-        /* Contact information container */
         .contact-info {
             display: flex;
             justify-content: center;
@@ -99,32 +106,31 @@
             flex-wrap: wrap;
             gap: 20px;
         }
-
-        /* Individual contact item */
         .contact-item {
             display: flex;
             align-items: center;
             font-size: 0.9em;
         }
-
-        /* Icon styling */
         .contact-item i {
             margin-right: 8px;
             font-size: 1em;
             color: #ffffff;
         }
-
-        /* Link styling */
         .contact-item a {
             color: #ffffff;
             text-decoration: none;
         }
-
         .contact-item a:hover {
             text-decoration: underline;
         }
-
-        /* Responsive adjustments */
+        .dark-mode {
+            --body-bg: #212529;
+            --body-color: #ffffff;
+            --navbar-bg: #8b1e15;
+            --footer-bg: #1a252f;
+            --link-color: #e0e0e0;
+            --link-hover: #ffd700;
+        }
         @media (max-width: 768px) {
             .contact-info {
                 flex-direction: column;
@@ -134,7 +140,7 @@
                 font-size: 0.85em;
             }
             .container {
-                padding-bottom: 180px; /* More padding on smaller screens due to stacked footer items */
+                padding-bottom: 180px;
             }
         }
     </style>
@@ -274,7 +280,7 @@
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <label class="dropdown-item">Theme Color:
-                                        <input type="color" id="themeColor" value="#2c3e50">
+                                        <input type="color" id="themeColor" value="#c0392b">
                                     </label>
                                 </li>
                                 <li>
@@ -340,14 +346,84 @@
                 <a href="mailto:info@asbm.et">info@asbm.et</a>
             </div>
             <div class="contact-item">
-                <i class="fas fa-envelope"></i>
-                <a href="www.asbm.et">www.asbm.et</a>
+                <i class="fas fa-globe"></i>
+                <a href="http://www.asbm.et">www.asbm.et</a>
             </div>
         </div>
     </footer>
 
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        document.getElementById('themeColor').addEventListener('change', function(e) {
+            document.documentElement.style.setProperty('--navbar-bg', e.target.value);
+            localStorage.setItem('themeColor', e.target.value);
+        });
+
+        document.getElementById('fontColor').addEventListener('change', function(e) {
+            document.documentElement.style.setProperty('--body-color', e.target.value);
+            localStorage.setItem('fontColor', e.target.value);
+        });
+
+        document.getElementById('fontSize').addEventListener('input', function(e) {
+            document.documentElement.style.setProperty('--bs-body-font-size', e.target.value + 'px');
+            localStorage.setItem('fontSize', e.target.value);
+        });
+
+        document.getElementById('toggleMode').addEventListener('click', function() {
+            const body = document.body;
+            if (body.classList.contains('dark-mode')) {
+                body.classList.remove('dark-mode');
+                document.documentElement.style.setProperty('--body-bg', '#f8f9fa');
+                document.documentElement.style.setProperty('--body-color', '#212529');
+                document.documentElement.style.setProperty('--navbar-bg', localStorage.getItem('themeColor') || '#c0392b');
+                document.documentElement.style.setProperty('--footer-bg', '#2c3e50');
+                document.documentElement.style.setProperty('--link-color', '#212529');
+                document.documentElement.style.setProperty('--link-hover', '#d4d4d4');
+                document.getElementById('modeIcon').innerHTML = '<i class="fas fa-moon"></i>';
+                localStorage.setItem('mode', 'light');
+            } else {
+                body.classList.add('dark-mode');
+                document.documentElement.style.setProperty('--body-bg', '#212529');
+                document.documentElement.style.setProperty('--body-color', '#ffffff');
+                document.documentElement.style.setProperty('--navbar-bg', '#8b1e15');
+                document.documentElement.style.setProperty('--footer-bg', '#1a252f');
+                document.documentElement.style.setProperty('--link-color', '#e0e0e0');
+                document.documentElement.style.setProperty('--link-hover', '#ffd700');
+                document.getElementById('modeIcon').innerHTML = '<i class="fas fa-sun"></i>';
+                localStorage.setItem('mode', 'dark');
+            }
+        });
+
+        window.onload = function() {
+            const savedTheme = localStorage.getItem('themeColor');
+            const savedFontColor = localStorage.getItem('fontColor');
+            const savedFontSize = localStorage.getItem('fontSize');
+            const savedMode = localStorage.getItem('mode');
+
+            if (savedTheme) document.documentElement.style.setProperty('--navbar-bg', savedTheme);
+            if (savedFontColor) document.documentElement.style.setProperty('--body-color', savedFontColor);
+            if (savedFontSize) document.documentElement.style.setProperty('--bs-body-font-size', savedFontSize + 'px');
+            if (savedMode === 'dark') {
+                document.body.classList.add('dark-mode');
+                document.documentElement.style.setProperty('--body-bg', '#212529');
+                document.documentElement.style.setProperty('--body-color', '#ffffff');
+                document.documentElement.style.setProperty('--navbar-bg', '#8b1e15');
+                document.documentElement.style.setProperty('--footer-bg', '#1a252f');
+                document.documentElement.style.setProperty('--link-color', '#e0e0e0');
+                document.documentElement.style.setProperty('--link-hover', '#ffd700');
+                document.getElementById('modeIcon').innerHTML = '<i class="fas fa-sun"></i>';
+            } else {
+                document.body.classList.remove('dark-mode');
+                document.documentElement.style.setProperty('--body-bg', '#f8f9fa');
+                document.documentElement.style.setProperty('--body-color', '#212529');
+                document.documentElement.style.setProperty('--navbar-bg', savedTheme || '#c0392b');
+                document.documentElement.style.setProperty('--footer-bg', '#2c3e50');
+                document.documentElement.style.setProperty('--link-color', '#212529');
+                document.documentElement.style.setProperty('--link-hover', '#d4d4d4');
+                document.getElementById('modeIcon').innerHTML = '<i class="fas fa-moon"></i>';
+            }
+        };
+    </script>
 </body>
 </html>

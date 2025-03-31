@@ -1,3 +1,4 @@
+# main.py
 import os
 import time
 from datetime import datetime
@@ -8,7 +9,7 @@ from flask import Flask, render_template, redirect, url_for, send_file
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 from flask_migrate import Migrate
-from modules.production_models import db
+from database import db
 from modules.stock_models import StockCategory, StockItem, StockTransaction, StockBalance
 
 try:
@@ -16,10 +17,22 @@ try:
     import xlsxwriter
     import matplotlib.pyplot as plt
     import seaborn as sns
-    import reportlab  # Added for PDF export
+    import reportlab
 except ImportError as e:
     logging.error(f"Missing required dependency: {str(e)}. Please install with 'pip install pandas xlsxwriter matplotlib seaborn reportlab'")
     raise
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your-secret-key'  # Replace with a secure key
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance', 'asbm_erp.db')}?timeout=10"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize CSRF protection
+csrf = CSRFProtect(app)
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
@@ -38,6 +51,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 for folder in [app.config['UPLOAD_FOLDER'], app.config['PRODUCT_UPLOAD_FOLDER']]:
     if not os.path.exists(folder):
         os.makedirs(folder)
+
 placeholder_path = os.path.join(app.config['UPLOAD_FOLDER'], 'placeholder_user.jpg')
 if not os.path.exists(placeholder_path):
     img = Image.new('RGB', (100, 100), color=(200, 200, 200))
@@ -142,7 +156,11 @@ def inject_csrf_token():
 def format_currency_filter(value):
     return f"ETB {value:,.2f}" if value is not None else "ETB 0.00"
 
+def date_filter(value, format='%Y-%m-%d'):
+    return value.strftime(format) if value else ''
+
 app.jinja_env.filters['format_currency'] = format_currency_filter
+app.jinja_env.filters['date'] = date_filter
 
 def init_db():
     with app.app_context():

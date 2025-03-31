@@ -62,8 +62,8 @@
                     <table class="table table-bordered" id="totalsTable">
                         <thead id="totalsTableHead">
                             <tr>
-                                <th>Total Quantity ({{ quantity_uom | default('Units') }})</th>
-                                <th>Total Sales ({{ value_uom | default('ETB') }})</th>
+                                <th>Total Planned Quantity ({{ quantity_uom | default('Units') }})</th>
+                                <th>Total Planned Value ({{ value_uom | default('ETB') }})</th>
                             </tr>
                         </thead>
                         <tbody id="totalsTableBody">
@@ -616,15 +616,42 @@
     const salesSummaryBody = document.getElementById('salesSummaryBody');
     let dateRange = [];
     let productsData = [];
+    let productsLoaded = false;
 
-    // Fetch products from the server
-    fetch('/planning/get_products')
-        .then(response => response.json())
-        .then(products => {
-            productsData = products;
-        });
+    async function fetchProducts() {
+        try {
+            const response = await fetch('/planning/get_products', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                credentials: 'include'
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const data = await response.json();
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            if (!Array.isArray(data)) {
+                throw new Error('Expected an array of products');
+            }
+            productsData = data;
+            productsLoaded = true;
+            console.log('Fetched products:', productsData);
+        } catch (error) {
+            console.error('Error fetching products:', error);
+            alert('Failed to load products: ' + error.message);
+            productsLoaded = false;
+        }
+    }
 
-    // Update Sales Summary based on active tab
+    document.addEventListener('DOMContentLoaded', async () => {
+        await fetchProducts();
+    });
+
     function updateSalesSummary(tab) {
         let periodData;
         let title;
@@ -663,19 +690,39 @@
         }
 
         salesSummaryTitle.textContent = title;
-        salesSummaryBody.innerHTML = `
-            <tr>
-                <td>${(periodData.planned_quantity || 0).toFixed(2)}</td>
-                <td>${(periodData.actual_quantity || 0).toFixed(2)}</td>
-                <td>${(periodData.quantity_percentage || 0).toFixed(2)}%</td>
-                <td>${(periodData.planned_value || 0).toFixed(2)}</td>
-                <td>${(periodData.actual_value || 0).toFixed(2)}</td>
-                <td>${(periodData.value_percentage || 0).toFixed(2)}%</td>
-            </tr>
-        `;
+        if (tab === 'summary') {
+            salesSummaryBody.innerHTML = `
+                <tr>
+                    <td>${(periodData.direct.planned_quantity || 0).toFixed(2)}</td>
+                    <td>${(periodData.direct.actual_quantity || 0).toFixed(2)}</td>
+                    <td>${(periodData.direct.quantity_percentage || 0).toFixed(2)}%</td>
+                    <td>${(periodData.direct.planned_value || 0).toFixed(2)}</td>
+                    <td>${(periodData.direct.actual_value || 0).toFixed(2)}</td>
+                    <td>${(periodData.direct.value_percentage || 0).toFixed(2)}%</td>
+                </tr>
+                <tr>
+                    <td>${(periodData.service.planned_quantity || 0).toFixed(2)}</td>
+                    <td>${(periodData.service.actual_quantity || 0).toFixed(2)}</td>
+                    <td>${(periodData.service.quantity_percentage || 0).toFixed(2)}%</td>
+                    <td>${(periodData.service.planned_value || 0).toFixed(2)}</td>
+                    <td>${(periodData.service.actual_value || 0).toFixed(2)}</td>
+                    <td>${(periodData.service.value_percentage || 0).toFixed(2)}%</td>
+                </tr>
+            `;
+        } else {
+            salesSummaryBody.innerHTML = `
+                <tr>
+                    <td>${(periodData.planned_quantity || 0).toFixed(2)}</td>
+                    <td>${(periodData.actual_quantity || 0).toFixed(2)}</td>
+                    <td>${(periodData.quantity_percentage || 0).toFixed(2)}%</td>
+                    <td>${(periodData.planned_value || 0).toFixed(2)}</td>
+                    <td>${(periodData.actual_value || 0).toFixed(2)}</td>
+                    <td>${(periodData.value_percentage || 0).toFixed(2)}%</td>
+                </tr>
+            `;
+        }
     }
 
-    // Update tabs event listener
     document.querySelectorAll('#planningTabs a').forEach(tab => {
         tab.addEventListener('shown.bs.tab', function (e) {
             const activeTab = e.target.id.split('-')[0];
@@ -683,13 +730,20 @@
         });
     });
 
-    // Generate table based on date range
-    generateTableBtn.addEventListener('click', function() {
+    generateTableBtn.addEventListener('click', async function() {
         const startDate = startDateInput.value;
         const endDate = endDateInput.value;
         if (!startDate || !endDate) {
             alert('Please select both start and end dates.');
             return;
+        }
+
+        if (!productsLoaded) {
+            await fetchProducts();
+            if (!productsLoaded) {
+                alert('Cannot generate table: Products failed to load.');
+                return;
+            }
         }
 
         dateRange = getDateRange(startDate, endDate);
@@ -706,7 +760,7 @@
                 <th></th>
                 <th></th>
                 <th></th>
-                ${dateRange.map(() => `<th>Total Produced ({{ quantity_uom | default('Units') }})</th><th>Total Sold ({{ value_uom | default('ETB') }})</th>`).join('')}
+                ${dateRange.map(() => `<th>Planned Quantity ({{ quantity_uom | default('Units') }})</th><th>Planned Value ({{ value_uom | default('ETB') }})</th>`).join('')}
             </tr>
         `;
         planningTableBody.innerHTML = '';
@@ -714,12 +768,25 @@
         planningTableContainer.style.display = 'block';
     });
 
-    // Add new product row
-    addNewProductRowBtn.addEventListener('click', function() {
+    addNewProductRowBtn.addEventListener('click', async function() {
         if (!dateRange.length) {
             alert('Please generate the table by selecting a date range first.');
             return;
         }
+
+        if (!productsLoaded) {
+            await fetchProducts();
+            if (!productsLoaded) {
+                alert('Cannot add new row: Products failed to load.');
+                return;
+            }
+        }
+
+        if (productsData.length === 0) {
+            alert('No products available. Please add products first.');
+            return;
+        }
+
         addProductRow();
     });
 
@@ -728,11 +795,11 @@
         const row = document.createElement('tr');
         row.setAttribute('data-row-id', rowId);
         row.innerHTML = `
-            <td><input type="text" name="customer_names[]" class="form-control" value="N/A" readonly></td>
+            <td><input type="text" name="customer_names[]" class="form-control customer-name" data-row-id="${rowId}" value="N/A" readonly></td>
             <td>
                 <select name="product_ids[]" class="form-control product-select" data-row-id="${rowId}" required>
                     <option value="">Select Product</option>
-                    ${productsData.map(product => `<option value="${product.id}" data-price="${product.selling_price}">${product.name}</option>`).join('')}
+                    ${productsData.map(product => `<option value="${product.id}" data-price="${product.selling_price}" data-customer="${product.customer_name}">${product.name}</option>`).join('')}
                 </select>
             </td>
             <td><input type="number" name="selling_prices[]" class="form-control selling-price" data-row-id="${rowId}" readonly></td>
@@ -753,17 +820,21 @@
         `;
         planningTableBody.appendChild(row);
 
-        // Add event listener for product selection
         const productSelect = row.querySelector('.product-select');
         productSelect.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
             const sellingPrice = parseFloat(selectedOption.getAttribute('data-price')) || 0;
+            const customerName = selectedOption.getAttribute('data-customer') || 'N/A';
+            
             const sellingPriceInput = row.querySelector('.selling-price');
             sellingPriceInput.value = sellingPrice.toFixed(2);
+            
+            const customerNameInput = row.querySelector('.customer-name');
+            customerNameInput.value = customerName;
+            
             updateRowSales(rowId);
         });
 
-        // Add event listeners for quantity inputs
         row.querySelectorAll('.quantity-input').forEach(input => {
             input.addEventListener('input', function() {
                 updateRowSales(rowId);
@@ -775,12 +846,10 @@
     function updateRowSales(rowId) {
         const row = planningTableBody.querySelector(`tr[data-row-id="${rowId}"]`);
         const sellingPrice = parseFloat(row.querySelector('.selling-price').value) || 0;
-        dateRange.forEach(date => {
-            const quantityInput = row.querySelector(`.quantity-input[data-date="${date}"]`);
-            const salesInput = row.querySelector(`.sales-value[data-date="${date}"]`);
-            const quantity = parseFloat(quantityInput.value) || 0;
-            const sales = quantity * sellingPrice;
-            salesInput.value = sales.toFixed(2);
+        row.querySelectorAll('.quantity-input').forEach(input => {
+            const quantity = parseFloat(input.value) || 0;
+            const salesValueInput = row.querySelector(`.sales-value[data-date="${input.dataset.date}"]`);
+            salesValueInput.value = (quantity * sellingPrice).toFixed(2);
         });
     }
 
@@ -788,13 +857,11 @@
         let totalQuantity = 0;
         let totalSales = 0;
         planningTableBody.querySelectorAll('tr').forEach(row => {
-            dateRange.forEach(date => {
-                const quantityInput = row.querySelector(`.quantity-input[data-date="${date}"]`);
-                const salesInput = row.querySelector(`.sales-value[data-date="${date}"]`);
-                const quantity = parseFloat(quantityInput.value) || 0;
-                const sales = parseFloat(salesInput.value) || 0;
-                totalQuantity += quantity;
-                totalSales += sales;
+            row.querySelectorAll('.quantity-input').forEach(input => {
+                totalQuantity += parseFloat(input.value) || 0;
+            });
+            row.querySelectorAll('.sales-value').forEach(input => {
+                totalSales += parseFloat(input.value) || 0;
             });
         });
         totalQuantityDisplay.textContent = totalQuantity.toFixed(2);
@@ -802,132 +869,18 @@
     }
 
     function getDateRange(start, end) {
-        const dates = [];
-        let currentDate = new Date(start);
+        const startDate = new Date(start);
         const endDate = new Date(end);
-        while (currentDate <= endDate) {
-            dates.push(currentDate.toISOString().split('T')[0]);
-            currentDate.setDate(currentDate.getDate() + 1);
+        const dates = [];
+        for (let dt = new Date(startDate); dt <= endDate; dt.setDate(dt.getDate() + 1)) {
+            dates.push(dt.toISOString().split('T')[0]);
         }
         return dates;
     }
 
     function formatDate(dateStr) {
         const date = new Date(dateStr);
-        const options = { month: 'short', day: 'numeric' };
-        return date.toLocaleDateString('en-US', options);
+        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     }
-
-    const chartConfig = (ctx, type, data, yTitle) => new Chart(ctx, {
-        type: type,
-        data: data,
-        options: { scales: { y: { beginAtZero: true, title: { display: true, text: yTitle } } } }
-    });
-
-    // Weekly Charts
-    const weeklySalesData = { labels: {{ chart_data.weekly.labels | default([]) | tojson }}, datasets: [{% for product_name, sales in (chart_data.weekly.sales | default({})).items() %}{ label: '{{ product_name }}', data: {{ sales | tojson }}, fill: false },{% endfor %}] };
-    weeklySalesData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
-    chartConfig(document.getElementById('weeklySalesChart').getContext('2d'), 'line', weeklySalesData, 'Sales ({{ value_uom | default('ETB') }})');
-
-    const weeklyQuantityData = { labels: {{ chart_data.weekly.labels | default([]) | tojson }}, datasets: [{% for product_name, quantities in (chart_data.weekly.quantities | default({})).items() %}{ label: '{{ product_name }}', data: {{ quantities | tojson }}, fill: false },{% endfor %}] };
-    weeklyQuantityData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
-    chartConfig(document.getElementById('weeklyQuantityChart').getContext('2d'), 'line', weeklyQuantityData, 'Quantity ({{ quantity_uom | default('Units') }})');
-
-    // Monthly Charts
-    const monthlySalesData = { labels: {{ chart_data.monthly.labels | default([]) | tojson }}, datasets: [{% for product_name, sales in (chart_data.monthly.sales | default({})).items() %}{ label: '{{ product_name }}', data: {{ sales | tojson }}, fill: false },{% endfor %}] };
-    monthlySalesData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
-    chartConfig(document.getElementById('monthlySalesChart').getContext('2d'), 'line', monthlySalesData, 'Sales ({{ value_uom | default('ETB') }})');
-
-    const monthlyQuantityData = { labels: {{ chart_data.monthly.labels | default([]) | tojson }}, datasets: [{% for product_name, quantities in (chart_data.monthly.quantities | default({})).items() %}{ label: '{{ product_name }}', data: {{ quantities | tojson }}, fill: false },{% endfor %}] };
-    monthlyQuantityData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
-    chartConfig(document.getElementById('monthlyQuantityChart').getContext('2d'), 'line', monthlyQuantityData, 'Quantity ({{ quantity_uom | default('Units') }})');
-
-    // Quarterly Charts
-    const quarterlySalesData = { labels: {{ chart_data.quarterly.labels | default([]) | tojson }}, datasets: [{% for product_name, sales in (chart_data.quarterly.sales | default({})).items() %}{ label: '{{ product_name }}', data: {{ sales | tojson }}, fill: false },{% endfor %}] };
-    quarterlySalesData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
-    chartConfig(document.getElementById('quarterlySalesChart').getContext('2d'), 'line', quarterlySalesData, 'Sales ({{ value_uom | default('ETB') }})');
-
-    const quarterlyQuantityData = { labels: {{ chart_data.quarterly.labels | default([]) | tojson }}, datasets: [{% for product_name, quantities in (chart_data.quarterly.quantities | default({})).items() %}{ label: '{{ product_name }}', data: {{ quantities | tojson }}, fill: false },{% endfor %}] };
-    quarterlyQuantityData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
-    chartConfig(document.getElementById('quarterlyQuantityChart').getContext('2d'), 'line', quarterlyQuantityData, 'Quantity ({{ quantity_uom | default('Units') }})');
-
-    // Bi-Annual Charts
-    const biAnnualSalesData = { labels: {{ chart_data.bi_annual.labels | default([]) | tojson }}, datasets: [{% for product_name, sales in (chart_data.bi_annual.sales | default({})).items() %}{ label: '{{ product_name }}', data: {{ sales | tojson }}, fill: false },{% endfor %}] };
-    biAnnualSalesData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
-    chartConfig(document.getElementById('biAnnualSalesChart').getContext('2d'), 'line', biAnnualSalesData, 'Sales ({{ value_uom | default('ETB') }})');
-
-    const biAnnualQuantityData = { labels: {{ chart_data.bi_annual.labels | default([]) | tojson }}, datasets: [{% for product_name, quantities in (chart_data.bi_annual.quantities | default({})).items() %}{ label: '{{ product_name }}', data: {{ quantities | tojson }}, fill: false },{% endfor %}] };
-    biAnnualQuantityData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
-    chartConfig(document.getElementById('biAnnualQuantityChart').getContext('2d'), 'line', biAnnualQuantityData, 'Quantity ({{ quantity_uom | default('Units') }})');
-
-    // Annual Charts
-    const annualSalesData = { labels: {{ chart_data.annual.labels | default([]) | tojson }}, datasets: [{% for product_name, sales in (chart_data.annual.sales | default({})).items() %}{ label: '{{ product_name }}', data: {{ sales | tojson }}, fill: false },{% endfor %}] };
-    annualSalesData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
-    chartConfig(document.getElementById('annualSalesChart').getContext('2d'), 'line', annualSalesData, 'Sales ({{ value_uom | default('ETB') }})');
-
-    const annualQuantityData = { labels: {{ chart_data.annual.labels | default([]) | tojson }}, datasets: [{% for product_name, quantities in (chart_data.annual.quantities | default({})).items() %}{ label: '{{ product_name }}', data: {{ quantities | tojson }}, fill: false },{% endfor %}] };
-    annualQuantityData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
-    chartConfig(document.getElementById('annualQuantityChart').getContext('2d'), 'line', annualQuantityData, 'Quantity ({{ quantity_uom | default('Units') }})');
-
-    // Service Charts
-    const serviceSalesData = { labels: {{ chart_data.service.labels | default([]) | tojson }}, datasets: [{% for product_name, sales in (chart_data.service.sales | default({})).items() %}{ label: '{{ product_name }}', data: {{ sales | tojson }}, fill: false },{% endfor %}] };
-    serviceSalesData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
-    chartConfig(document.getElementById('serviceSalesChart').getContext('2d'), 'line', serviceSalesData, 'Sales ({{ value_uom | default('ETB') }})');
-
-    const serviceQuantityData = { labels: {{ chart_data.service.labels | default([]) | tojson }}, datasets: [{% for product_name, quantities in (chart_data.service.quantities | default({})).items() %}{ label: '{{ product_name }}', data: {{ quantities | tojson }}, fill: false },{% endfor %}] };
-    serviceQuantityData.datasets.forEach((d, i) => d.borderColor = colors[i % colors.length]);
-    chartConfig(document.getElementById('serviceQuantityChart').getContext('2d'), 'line', serviceQuantityData, 'Quantity ({{ quantity_uom | default('Units') }})');
-
-    // Pareto Chart
-    const paretoData = {
-        labels: {{ pareto_labels | tojson }},
-        datasets: [
-            {
-                label: 'Sales',
-                data: {{ pareto_values | tojson }},
-                backgroundColor: '#36A2EB',
-                type: 'bar'
-            },
-            {
-                label: 'Cumulative %',
-                data: {{ pareto_cumulative | tojson }},
-                borderColor: '#FF6384',
-                fill: false,
-                type: 'line',
-                yAxisID: 'y1'
-            }
-        ]
-    };
-    new Chart(document.getElementById('paretoChart').getContext('2d'), {
-        type: 'bar',
-        data: paretoData,
-        options: {
-            scales: {
-                y: { beginAtZero: true, title: { display: true, text: 'Sales ({{ value_uom | default('ETB') }})' } },
-                y1: { position: 'right', beginAtZero: true, max: 100, title: { display: true, text: 'Cumulative %' } }
-            }
-        }
-    });
-
-    // Summary Charts (Direct + Service)
-    const summarySalesData = {
-        labels: ['Direct Sales', 'Service Sales'],
-        datasets: [{
-            label: 'Sales',
-            data: [{{ sales_data.summary.direct.actual_value | default(0) | tojson }}, {{ sales_data.summary.service.actual_value | default(0) | tojson }}],
-            backgroundColor: ['#36A2EB', '#FF6384']
-        }]
-    };
-    chartConfig(document.getElementById('summarySalesChart').getContext('2d'), 'bar', summarySalesData, 'Sales ({{ value_uom | default('ETB') }})');
-
-    const summaryQuantityData = {
-        labels: ['Direct Sales', 'Service Sales'],
-        datasets: [{
-            label: 'Quantity',
-            data: [{{ sales_data.summary.direct.actual_quantity | default(0) | tojson }}, {{ sales_data.summary.service.actual_quantity | default(0) | tojson }}],
-            backgroundColor: ['#36A2EB', '#FF6384']
-        }]
-    };
-    chartConfig(document.getElementById('summaryQuantityChart').getContext('2d'), 'bar', summaryQuantityData, 'Quantity ({{ quantity_uom | default('Units') }})');
 </script>
 {% endblock %}

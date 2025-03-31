@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, abort
 from flask_login import login_required, current_user
-from modules.production_models import db
-from modules.models import Product, ProductConfig, ProductPlan, Order
+from database import db
+from modules.models import Product, ProductConfig, ProductPlan, Sale, User, Customer, SalesRecord
 from datetime import datetime, timedelta
 import pandas as pd
 from io import BytesIO
@@ -9,6 +9,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib import colors
 import logging
+import sqlite3
 from flask_wtf.csrf import CSRFProtect, validate_csrf
 
 csrf = CSRFProtect()
@@ -24,7 +25,8 @@ def get_week_start(date):
 def aggregate_plans(plans, period, is_service=False):
     periods = {'weekly': 'W', 'monthly': 'M', 'quarterly': 'Q', 'bi-annual': '6M', 'annual': 'Y'}
     grouped = {}
-    totals = {'planned_quantity': 0, 'actual_quantity': 0, 'planned_value': 0, 'actual_value': 0, 'quantity_percentage': 0, 'value_percentage': 0}
+    totals = {'planned_quantity': 0, 'actual_quantity': 0, 'planned_value': 0, 'actual_value': 0}
+    
     for plan in plans:
         product_config = plan.product.config
         supports_direct = product_config.supports_direct_sales if product_config else True
@@ -33,44 +35,60 @@ def aggregate_plans(plans, period, is_service=False):
             continue
         if not is_service and not supports_direct:
             continue
-        start_date = plan.start_date
+        
+        start_date = datetime.combine(plan.start_date, datetime.min.time())
         if period == 'weekly':
             period_key = get_week_start(start_date).strftime('%Y-%m-%d')
         else:
             period_key = start_date.strftime(f'%Y-{periods[period]}')
+        
         if period_key not in grouped:
-            grouped[period_key] = {'plans': [], 'totals': {'planned_quantity': 0, 'actual_quantity': 0, 'planned_value': 0, 'actual_value': 0, 'quantity_percentage': 0, 'value_percentage': 0}}
-        actual_quantity = sum(order.quantity for order in Order.query.filter(Order.product_id == plan.product_id, Order.order_date.between(plan.start_date, plan.end_date)).all())
-        actual_value = actual_quantity * plan.product.selling_price
+            grouped[period_key] = {'plans': [], 'totals': {'planned_quantity': 0, 'actual_quantity': 0, 'planned_value': 0, 'actual_value': 0}}
+        
+        sales = Sale.query.filter(Sale.product_id == plan.product_id, Sale.sale_date.between(plan.start_date, plan.end_date)).all()
+        actual_quantity = sum(sale.quantity for sale in sales)
+        actual_value = sum(sale.total_price for sale in sales)
+        
+        customer_name = plan.product.customer.name if plan.product.customer else 'N/A'
+        
         plan_data = {
-            'plan': plan,
+            'plan': {
+                'id': plan.id,
+                'product_id': plan.product_id,
+                'start_date': plan.start_date.strftime('%Y-%m-%d'),
+                'end_date': plan.end_date.strftime('%Y-%m-%d'),
+                'planned_quantity': float(plan.planned_quantity),
+                'planned_value': float(plan.planned_value)
+            },
+            'customer_name': customer_name,
             'product_name': plan.product.name,
-            'product_type': plan.product.product_type,
-            'actual_quantity': actual_quantity,
-            'quantity_percentage': (actual_quantity / plan.planned_quantity * 100) if plan.planned_quantity > 0 else 0,
-            'actual_value': actual_value,
-            'value_percentage': (actual_value / plan.planned_value * 100) if plan.planned_value > 0 else 0,
+            'actual_quantity': float(actual_quantity),
+            'quantity_percentage': float((actual_quantity / plan.planned_quantity * 100) if plan.planned_quantity > 0 else 0),
+            'actual_value': float(actual_value),
+            'value_percentage': float((actual_value / plan.planned_value * 100) if plan.planned_value > 0 else 0),
             'product_share': 0
         }
+        
         grouped[period_key]['plans'].append(plan_data)
-        grouped[period_key]['totals']['planned_quantity'] += plan.planned_quantity
-        grouped[period_key]['totals']['actual_quantity'] += actual_quantity
-        grouped[period_key]['totals']['planned_value'] += plan.planned_value
-        grouped[period_key]['totals']['actual_value'] += actual_value
-        totals['planned_quantity'] += plan.planned_quantity
-        totals['actual_quantity'] += actual_quantity
-        totals['planned_value'] += plan.planned_value
-        totals['actual_value'] += actual_value
+        grouped[period_key]['totals']['planned_quantity'] += float(plan.planned_quantity)
+        grouped[period_key]['totals']['actual_quantity'] += float(actual_quantity)
+        grouped[period_key]['totals']['planned_value'] += float(plan.planned_value)
+        grouped[period_key]['totals']['actual_value'] += float(actual_value)
+        
+        totals['planned_quantity'] += float(plan.planned_quantity)
+        totals['actual_quantity'] += float(actual_quantity)
+        totals['planned_value'] += float(plan.planned_value)
+        totals['actual_value'] += float(actual_value)
 
     for period_key, data in grouped.items():
         total_value = data['totals']['actual_value']
         for plan_data in data['plans']:
-            plan_data['product_share'] = (plan_data['actual_value'] / total_value * 100) if total_value > 0 else 0
-        data['totals']['quantity_percentage'] = (data['totals']['actual_quantity'] / data['totals']['planned_quantity'] * 100) if data['totals']['planned_quantity'] > 0 else 0
-        data['totals']['value_percentage'] = (data['totals']['actual_value'] / data['totals']['planned_value'] * 100) if data['totals']['planned_value'] > 0 else 0
+            plan_data['product_share'] = float((plan_data['actual_value'] / total_value * 100) if total_value > 0 else 0)
+        data['totals']['quantity_percentage'] = float((data['totals']['actual_quantity'] / data['totals']['planned_quantity'] * 100) if data['totals']['planned_quantity'] > 0 else 0)
+        data['totals']['value_percentage'] = float((data['totals']['actual_value'] / data['totals']['planned_value'] * 100) if data['totals']['planned_value'] > 0 else 0)
 
-    totals['quantity_percentage'] = (totals['actual_quantity'] / totals['planned_quantity'] * 100) if totals['planned_quantity'] > 0 else 0
-    totals['value_percentage'] = (totals['actual_value'] / totals['planned_value'] * 100) if totals['planned_value'] > 0 else 0
+    totals['quantity_percentage'] = float((totals['actual_quantity'] / totals['planned_quantity'] * 100) if totals['planned_quantity'] > 0 else 0)
+    totals['value_percentage'] = float((totals['actual_value'] / totals['planned_value'] * 100) if totals['planned_value'] > 0 else 0)
     return {'grouped': grouped, 'totals': totals}
 
 def get_chart_data(plans, period):
@@ -120,26 +138,33 @@ def planning():
         'service': service_data['totals'],
         'summary': {
             'direct': {
-                'planned_quantity': sum(p.planned_quantity for p in plans if not p.product.config or p.product.config.supports_direct_sales),
-                'actual_quantity': sum(sum(o.quantity for o in Order.query.filter_by(product_id=p.product_id).all()) for p in plans if not p.product.config or p.product.config.supports_direct_sales),
-                'planned_value': sum(p.planned_value for p in plans if not p.product.config or p.product.config.supports_direct_sales),
-                'actual_value': sum(sum(o.quantity * p.product.selling_price for o in Order.query.filter_by(product_id=p.product_id).all()) for p in plans if not p.product.config or p.product.config.supports_direct_sales),
+                'planned_quantity': float(sum(p.planned_quantity for p in plans if not p.product.config or p.product.config.supports_direct_sales)),
+                'actual_quantity': float(sum(sum(s.quantity for s in Sale.query.filter_by(product_id=p.product_id).all()) for p in plans if not p.product.config or p.product.config.supports_direct_sales)),
+                'planned_value': float(sum(p.planned_value for p in plans if not p.product.config or p.product.config.supports_direct_sales)),
+                'actual_value': float(sum(sum(s.total_price for s in Sale.query.filter_by(product_id=p.product_id).all()) for p in plans if not p.product.config or p.product.config.supports_direct_sales)),
                 'quantity_percentage': 0,
                 'value_percentage': 0
             },
             'service': {
-                'planned_quantity': sum(p.planned_quantity for p in plans if p.product.config and p.product.config.supports_service_sales),
-                'actual_quantity': sum(sum(o.quantity for o in Order.query.filter_by(product_id=p.product_id).all()) for p in plans if p.product.config and p.product.config.supports_service_sales),
-                'planned_value': sum(p.planned_value for p in plans if p.product.config and p.product.config.supports_service_sales),
-                'actual_value': sum(sum(o.quantity * p.product.selling_price for o in Order.query.filter_by(product_id=p.product_id).all()) for p in plans if p.product.config and p.product.config.supports_service_sales),
+                'planned_quantity': float(sum(p.planned_quantity for p in plans if p.product.config and p.product.config.supports_service_sales)),
+                'actual_quantity': float(sum(sum(s.quantity for s in Sale.query.filter_by(product_id=p.product_id).all()) for p in plans if p.product.config and p.product.config.supports_service_sales)),
+                'planned_value': float(sum(p.planned_value for p in plans if p.product.config and p.product.config.supports_service_sales)),
+                'actual_value': float(sum(sum(s.total_price for s in Sale.query.filter_by(product_id=p.product_id).all()) for p in plans if p.product.config and p.product.config.supports_service_sales)),
                 'quantity_percentage': 0,
                 'value_percentage': 0
             }
         }
     }
     for cat in ['direct', 'service']:
-        sales_data['summary'][cat]['quantity_percentage'] = (sales_data['summary'][cat]['actual_quantity'] / sales_data['summary'][cat]['planned_quantity'] * 100) if sales_data['summary'][cat]['planned_quantity'] > 0 else 0
-        sales_data['summary'][cat]['value_percentage'] = (sales_data['summary'][cat]['actual_value'] / sales_data['summary'][cat]['planned_value'] * 100) if sales_data['summary'][cat]['planned_value'] > 0 else 0
+        sales_data['summary'][cat]['quantity_percentage'] = float((sales_data['summary'][cat]['actual_quantity'] / sales_data['summary'][cat]['planned_quantity'] * 100) if sales_data['summary'][cat]['planned_quantity'] > 0 else 0)
+        sales_data['summary'][cat]['value_percentage'] = float((sales_data['summary'][cat]['actual_value'] / sales_data['summary'][cat]['planned_value'] * 100) if sales_data['summary'][cat]['planned_value'] > 0 else 0)
+
+    sales_data['weekly']['plans'] = weekly_data['grouped'].get(next(iter(weekly_data['grouped']), None), {}).get('plans', [])
+    sales_data['monthly']['plans'] = monthly_data['grouped'].get(next(iter(monthly_data['grouped']), None), {}).get('plans', [])
+    sales_data['quarterly']['plans'] = quarterly_data['grouped'].get(next(iter(quarterly_data['grouped']), None), {}).get('plans', [])
+    sales_data['bi_annual']['plans'] = bi_annual_data['grouped'].get(next(iter(bi_annual_data['grouped']), None), {}).get('plans', [])
+    sales_data['annual']['plans'] = annual_data['grouped'].get(next(iter(annual_data['grouped']), None), {}).get('plans', [])
+    sales_data['service']['plans'] = service_data['grouped'].get(next(iter(service_data['grouped']), None), {}).get('plans', [])
 
     chart_data = {
         'weekly': get_chart_data(plans, 'weekly'),
@@ -150,28 +175,39 @@ def planning():
         'service': get_chart_data([p for p in plans if p.product.config and p.product.config.supports_service_sales], 'annual')
     }
 
-    pareto_data = sorted([(p.product.name, sum(o.quantity * p.product.selling_price for o in Order.query.filter_by(product_id=p.product_id).all())) for p in plans], key=lambda x: x[1], reverse=True)
+    pareto_data = sorted([(p.product.name, sum(s.total_price for s in Sale.query.filter_by(product_id=p.product_id).all())) for p in plans], key=lambda x: x[1], reverse=True)
     pareto_labels = [x[0] for x in pareto_data]
-    pareto_values = [x[1] for x in pareto_data]
+    pareto_values = [float(x[1]) for x in pareto_data]
     total = sum(pareto_values)
-    pareto_cumulative = [sum(pareto_values[:i+1]) / total * 100 for i in range(len(pareto_values))] if total > 0 else [0] * len(pareto_values)
+    pareto_cumulative = [float(sum(pareto_values[:i+1]) / total * 100) for i in range(len(pareto_values))] if total > 0 else [0] * len(pareto_values)
 
     comparison_data = {p.name: {'this_month': 0, 'last_month': 0, 'last_year': 0} for p in products}
 
     return render_template('planning.html', products=products, date_range=date_range, sales_data=sales_data, chart_data=chart_data, pareto_labels=pareto_labels, pareto_values=pareto_values, pareto_cumulative=pareto_cumulative, comparison_data=comparison_data, quantity_uom='Units', value_uom='ETB')
 
-@planning_bp.route('/planning/get_products')
+@planning_bp.route('/get_products')
 @login_required
 def get_products():
-    products = Product.query.outerjoin(ProductConfig, Product.id == ProductConfig.product_id).all()
-    return jsonify([{
-        'id': p.id,
-        'name': p.name,
-        'product_type': p.product_type,
-        'selling_price': float(p.selling_price),
-        'supports_direct_sales': p.config.supports_direct_sales if p.config else True,
-        'supports_service_sales': p.config.supports_service_sales if p.config else False
-    } for p in products])
+    try:
+        products = Product.query.outerjoin(ProductConfig, Product.id == ProductConfig.product_id).all()
+        logger.debug(f"Fetched {len(products)} products from database")
+
+        product_data = [
+            {
+                'id': product.id,
+                'name': product.name,
+                'product_type': product.product_type,
+                'customer_name': product.customer.name if product.customer else product.customer_name if product.customer_name else 'N/A',
+                'selling_price': float(product.selling_price),
+                'supports_direct_sales': product.config.supports_direct_sales if product.config else True,
+                'supports_service_sales': product.config.supports_service_sales if product.config else False
+            }
+            for product in products
+        ]
+        return jsonify(product_data)
+    except Exception as e:
+        logger.error(f"Error fetching products: {str(e)}")
+        return jsonify({'error': f'Failed to load products: {str(e)}'}), 500
 
 @planning_bp.route('/planning/create_plan', methods=['POST'])
 @login_required
@@ -189,24 +225,45 @@ def create_plan():
     start_date = datetime.strptime(request.form['start_date'], '%Y-%m-%d').date()
     end_date = datetime.strptime(request.form['end_date'], '%Y-%m-%d').date()
     product_ids = request.form.getlist('product_ids[]')
+    sales_types = request.form.getlist('sales_types[]')
 
     try:
-        for product_id in product_ids:
+        for i, product_id in enumerate(product_ids):
             product = Product.query.get_or_404(product_id)
+            row_id = request.form.getlist('product_ids[]')[i]
+            total_quantity = 0
+            total_value = 0
+            
             for date_str in pd.date_range(start_date, end_date).strftime('%Y-%m-%d'):
-                qty_key = f"quantities[{product_id}][{date_str}]"
+                qty_key = f"quantities[{row_id}][{date_str}]"
                 if qty_key in request.form:
                     qty = float(request.form[qty_key])
-                    if qty > 0:
-                        plan = ProductPlan(
-                            product_id=product_id,
-                            plan_type='daily',
-                            start_date=datetime.strptime(date_str, '%Y-%m-%d').date(),
-                            end_date=datetime.strptime(date_str, '%Y-%m-%d').date(),
-                            planned_quantity=qty,
-                            planned_value=qty * product.selling_price
-                        )
-                        db.session.add(plan)
+                    total_quantity += qty
+                    total_value += qty * product.selling_price
+            
+            if total_quantity > 0:
+                plan_type = sales_types[i] if i < len(sales_types) else 'production'
+                new_plan = ProductPlan(
+                    product_id=product_id,
+                    plan_type=plan_type,
+                    start_date=start_date,
+                    end_date=end_date,
+                    planned_quantity=total_quantity,
+                    planned_value=total_value,
+                    actual_quantity=0,
+                    actual_value=0
+                )
+                
+                sales_record = SalesRecord(
+                    product_id=product_id,
+                    quantity=total_quantity,
+                    value=total_value,
+                    sale_date=start_date
+                )
+                
+                db.session.add(new_plan)
+                db.session.add(sales_record)
+        
         db.session.commit()
         flash('Plan created successfully!', 'success')
     except Exception as e:
@@ -279,13 +336,13 @@ def export_excel(period):
             ['Service Sales', sales_data['service']['planned_quantity'], sales_data['service']['actual_quantity'], sales_data['service']['quantity_percentage'], sales_data['service']['planned_value'], sales_data['service']['actual_value'], sales_data['service']['value_percentage']]
         ]
     else:
-        data = [['Product', 'Product Type', 'Start Date', 'End Date', 'Planned Quantity', 'Actual Quantity', 'Quantity %', 'Planned Value', 'Actual Value', 'Value %', 'Product Share %']]
+        data = [['Customer', 'Product', 'Start Date', 'End Date', 'Planned Quantity', 'Actual Quantity', 'Quantity %', 'Planned Value', 'Actual Value', 'Value %', 'Product Share %']]
         for period_key, period_data in grouped_data.items():
             for plan_data in period_data['plans']:
                 data.append([
-                    plan_data['product_name'], plan_data['product_type'], plan_data['plan'].start_date, plan_data['plan'].end_date,
-                    plan_data['plan'].planned_quantity, plan_data['actual_quantity'], plan_data['quantity_percentage'],
-                    plan_data['plan'].planned_value, plan_data['actual_value'], plan_data['value_percentage'], plan_data['product_share']
+                    plan_data['customer_name'], plan_data['product_name'], plan_data['plan']['start_date'], plan_data['plan']['end_date'],
+                    plan_data['plan']['planned_quantity'], plan_data['actual_quantity'], plan_data['quantity_percentage'],
+                    plan_data['plan']['planned_value'], plan_data['actual_value'], plan_data['value_percentage'], plan_data['product_share']
                 ])
             data.append(['Total', '', '', '', period_data['totals']['planned_quantity'], period_data['totals']['actual_quantity'], period_data['totals']['quantity_percentage'], period_data['totals']['planned_value'], period_data['totals']['actual_value'], period_data['totals']['value_percentage'], 100])
 
@@ -311,13 +368,13 @@ def export_pdf(period):
             ['Service Sales', f"{sales_data['service']['planned_quantity']:.2f}", f"{sales_data['service']['actual_quantity']:.2f}", f"{sales_data['service']['quantity_percentage']:.2f}%", f"{sales_data['service']['planned_value']:.2f}", f"{sales_data['service']['actual_value']:.2f}", f"{sales_data['service']['value_percentage']:.2f}%"]
         ]
     else:
-        data = [['Product', 'Product Type', 'Start Date', 'End Date', 'Planned Quantity', 'Actual Quantity', 'Quantity %', 'Planned Value', 'Actual Value', 'Value %', 'Product Share %']]
+        data = [['Customer', 'Product', 'Start Date', 'End Date', 'Planned Quantity', 'Actual Quantity', 'Quantity %', 'Planned Value', 'Actual Value', 'Value %', 'Product Share %']]
         for period_key, period_data in grouped_data.items():
             for plan_data in period_data['plans']:
                 data.append([
-                    plan_data['product_name'], plan_data['product_type'], str(plan_data['plan'].start_date), str(plan_data['plan'].end_date),
-                    f"{plan_data['plan'].planned_quantity:.2f}", f"{plan_data['actual_quantity']:.2f}", f"{plan_data['quantity_percentage']:.2f}%",
-                    f"{plan_data['plan'].planned_value:.2f}", f"{plan_data['actual_value']:.2f}", f"{plan_data['value_percentage']:.2f}%", f"{plan_data['product_share']:.2f}%"
+                    plan_data['customer_name'], plan_data['product_name'], plan_data['plan']['start_date'], plan_data['plan']['end_date'],
+                    f"{plan_data['plan']['planned_quantity']:.2f}", f"{plan_data['actual_quantity']:.2f}", f"{plan_data['quantity_percentage']:.2f}%",
+                    f"{plan_data['plan']['planned_value']:.2f}", f"{plan_data['actual_value']:.2f}", f"{plan_data['value_percentage']:.2f}%", f"{plan_data['product_share']:.2f}%"
                 ])
             data.append(['Total', '', '', '', f"{period_data['totals']['planned_quantity']:.2f}", f"{period_data['totals']['actual_quantity']:.2f}", f"{period_data['totals']['quantity_percentage']:.2f}%", f"{period_data['totals']['planned_value']:.2f}", f"{period_data['totals']['actual_value']:.2f}", f"{period_data['totals']['value_percentage']:.2f}%", '100%'])
 

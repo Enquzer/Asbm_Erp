@@ -1,31 +1,42 @@
 {% extends 'base.html' %}
 {% block title %}Purchase Requests{% endblock %}
 {% block content %}
-    <h1 class="mb-4">Purchase Requests</h1>
+    <h1 class="mb-4" style="color: var(--body-color);">Purchase Requests</h1>
 
-    <!-- Form to Submit New Purchase Request -->
     <div class="card mb-4">
         <div class="card-header">
-            <h5>Submit New Purchase Request</h5>
+            <h5 style="color: var(--body-color);">Submit New Purchase Request</h5>
         </div>
         <div class="card-body">
-            <form action="{{ url_for('dashboard.submit_purchase_request') }}" method="POST">
+            <form action="{{ url_for('purchasing.purchase_request') }}" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-3">
                     <div class="col-md-3">
-                        <label>Item Name</label>
+                        <label style="color: var(--body-color);">Department</label>
+                        <input type="text" class="form-control" name="dept_name" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label style="color: var(--body-color);">Duty Station</label>
+                        <select class="form-select" name="duty_station_id" required>
+                            {% for station in duty_stations %}
+                                <option value="{{ station.id }}">{{ station.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label style="color: var(--body-color);">Item Name</label>
                         <input type="text" class="form-control" name="item_name" required>
                     </div>
                     <div class="col-md-3">
-                        <label>Description</label>
+                        <label style="color: var(--body-color);">Description</label>
                         <input type="text" class="form-control" name="description">
                     </div>
                     <div class="col-md-2">
-                        <label>Quantity</label>
+                        <label style="color: var(--body-color);">Quantity</label>
                         <input type="number" class="form-control" name="quantity" value="1" min="1" required>
                     </div>
                     <div class="col-md-2">
-                        <label>Unit of Measure</label>
+                        <label style="color: var(--body-color);">Unit of Measure</label>
                         <select class="form-select" name="unit_of_measure" required>
                             <option value="Pieces">Pieces</option>
                             <option value="Kg">Kg</option>
@@ -34,7 +45,7 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label>Expected Delivery</label>
+                        <label style="color: var(--body-color);">Expected Delivery</label>
                         <input type="date" class="form-control" name="expected_delivery_date" required>
                     </div>
                     <div class="col-md-12">
@@ -45,33 +56,34 @@
         </div>
     </div>
 
-    <!-- Table of Existing Purchase Requests -->
-    <h5>Existing Purchase Requests</h5>
+    <h5 style="color: var(--body-color);">Existing Purchase Requests</h5>
     {% if purchase_requests %}
         <table class="table table-striped table-hover">
             <thead>
                 <tr>
-                    <th>Request Code</th>
-                    <th>Item Name</th>
-                    <th>Department</th>
-                    <th>Description</th>
-                    <th>Quantity</th>
-                    <th>Expected Delivery</th>
-                    <th>Status</th>
-                    <th>Requested By</th>
-                    <th>Created At</th>
+                    <th style="color: var(--body-color);">Request Code</th>
+                    <th style="color: var(--body-color);">Item Name</th>
+                    <th style="color: var(--body-color);">Department</th>
+                    <th style="color: var(--body-color);">Duty Station</th>
+                    <th style="color: var(--body-color);">Description</th>
+                    <th style="color: var(--body-color);">Quantity</th>
+                    <th style="color: var(--body-color);">Expected Delivery</th>
+                    <th style="color: var(--body-color);">Status</th>
+                    <th style="color: var(--body-color);">Requested By</th>
+                    <th style="color: var(--body-color);">Created At</th>
                 </tr>
             </thead>
             <tbody>
                 {% for req in purchase_requests %}
                     <tr>
-                        <td>{{ req.request_code }}</td>
-                        <td>{{ req.item_name }}</td>
-                        <td>{{ req.dept_name }}</td>
-                        <td>{{ req.description or 'N/A' }}</td>
-                        <td>{{ req.quantity }} {{ req.unit_of_measure }}</td>
-                        <td>{{ req.expected_delivery_date }}</td>
-                        <td>
+                        <td style="color: var(--body-color);">{{ req.request_code }}</td>
+                        <td style="color: var(--body-color);">{{ req.item_name }}</td>
+                        <td style="color: var(--body-color);">{{ req.dept_name }}</td>
+                        <td style="color: var(--body-color);">{{ req.duty_station.name if req.duty_station else 'N/A' }}</td>
+                        <td style="color: var(--body-color);">{{ req.description or 'N/A' }}</td>
+                        <td style="color: var(--body-color);">{{ req.quantity }} {{ req.unit_of_measure }}</td>
+                        <td style="color: var(--body-color);">{{ req.expected_delivery_date }}</td>
+                        <td style="color: var(--body-color);">
                             {% if req.status == "Fulfilled" %}
                                 <i class="bi bi-check-circle-fill text-success" title="Fulfilled"></i> {{ req.status }}
                             {% elif req.status == "Pending" %}
@@ -82,13 +94,13 @@
                                 {{ req.status }}
                             {% endif %}
                         </td>
-                        <td>{{ req.requested_by.username }}</td>
-                        <td>{{ req.created_at }}</td>
+                        <td style="color: var(--body-color);">{{ req.requested_by.username }}</td>
+                        <td style="color: var(--body-color);">{{ req.created_at }}</td>
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
     {% else %}
-        <p>No purchase requests submitted yet.</p>
+        <p style="color: var(--body-color);">No purchase requests submitted yet.</p>
     {% endif %}
 {% endblock %}

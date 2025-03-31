@@ -44,9 +44,12 @@
 <div class="tab-content" id="salesReportTabContent">
     <!-- Weekly Tab -->
     <div class="tab-pane fade show active" id="weekly" role="tabpanel">
-        <h2>Weekly Sales Report</h2>
-        <a href="{{ url_for('sales.export_excel', period='weekly', start_date=start_date, end_date=end_date) }}" class="btn btn-success mb-3">Export to Excel</a>
-        <a href="{{ url_for('sales.export_pdf', period='weekly', start_date=start_date, end_date=end_date) }}" class="btn btn-danger mb-3">Export to PDF</a>
+        <h2>
+            Weekly Sales Report
+            <a href="{{ url_for('sales.sales') }}" class="float-end ms-2" title="Back to Sales"><i class="fas fa-arrow-left"></i></a>
+            <a href="{{ url_for('sales.export_pdf', period='weekly', start_date=start_date, end_date=end_date) }}" class="float-end ms-2" title="Export to PDF"><i class="fas fa-file-pdf text-danger"></i></a>
+            <a href="{{ url_for('sales.export_excel', period='weekly', start_date=start_date, end_date=end_date) }}" class="float-end" title="Export to Excel"><i class="fas fa-file-excel text-success"></i></a>
+        </h2>
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -91,9 +94,12 @@
 
     <!-- Monthly Tab -->
     <div class="tab-pane fade" id="monthly" role="tabpanel">
-        <h2>Monthly Sales Report</h2>
-        <a href="{{ url_for('sales.export_excel', period='monthly', start_date=start_date, end_date=end_date) }}" class="btn btn-success mb-3">Export to Excel</a>
-        <a href="{{ url_for('sales.export_pdf', period='monthly', start_date=start_date, end_date=end_date) }}" class="btn btn-danger mb-3">Export to PDF</a>
+        <h2>
+            Monthly Sales Report
+            <a href="{{ url_for('sales.sales') }}" class="float-end ms-2" title="Back to Sales"><i class="fas fa-arrow-left"></i></a>
+            <a href="{{ url_for('sales.export_pdf', period='monthly', start_date=start_date, end_date=end_date) }}" class="float-end ms-2" title="Export to PDF"><i class="fas fa-file-pdf text-danger"></i></a>
+            <a href="{{ url_for('sales.export_excel', period='monthly', start_date=start_date, end_date=end_date) }}" class="float-end" title="Export to Excel"><i class="fas fa-file-excel text-success"></i></a>
+        </h2>
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -138,9 +144,12 @@
 
     <!-- Quarterly Tab -->
     <div class="tab-pane fade" id="quarterly" role="tabpanel">
-        <h2>Quarterly Sales Report</h2>
-        <a href="{{ url_for('sales.export_excel', period='quarterly', start_date=start_date, end_date=end_date) }}" class="btn btn-success mb-3">Export to Excel</a>
-        <a href="{{ url_for('sales.export_pdf', period='quarterly', start_date=start_date, end_date=end_date) }}" class="btn btn-danger mb-3">Export to PDF</a>
+        <h2>
+            Quarterly Sales Report
+            <a href="{{ url_for('sales.sales') }}" class="float-end ms-2" title="Back to Sales"><i class="fas fa-arrow-left"></i></a>
+            <a href="{{ url_for('sales.export_pdf', period='quarterly', start_date=start_date, end_date=end_date) }}" class="float-end ms-2" title="Export to PDF"><i class="fas fa-file-pdf text-danger"></i></a>
+            <a href="{{ url_for('sales.export_excel', period='quarterly', start_date=start_date, end_date=end_date) }}" class="float-end" title="Export to Excel"><i class="fas fa-file-excel text-success"></i></a>
+        </h2>
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -185,9 +194,12 @@
 
     <!-- Bi-Annual Tab -->
     <div class="tab-pane fade" id="bi-annual" role="tabpanel">
-        <h2>Bi-Annual Sales Report</h2>
-        <a href="{{ url_for('sales.export_excel', period='bi_annual', start_date=start_date, end_date=end_date) }}" class="btn btn-success mb-3">Export to Excel</a>
-        <a href="{{ url_for('sales.export_pdf', period='bi_annual', start_date=start_date, end_date=end_date) }}" class="btn btn-danger mb-3">Export to PDF</a>
+        <h2>
+            Bi-Annual Sales Report
+            <a href="{{ url_for('sales.sales') }}" class="float-end ms-2" title="Back to Sales"><i class="fas fa-arrow-left"></i></a>
+            <a href="{{ url_for('sales.export_pdf', period='bi_annual', start_date=start_date, end_date=end_date) }}" class="float-end ms-2" title="Export to PDF"><i class="fas fa-file-pdf text-danger"></i></a>
+            <a href="{{ url_for('sales.export_excel', period='bi_annual', start_date=start_date, end_date=end_date) }}" class="float-end" title="Export to Excel"><i class="fas fa-file-excel text-success"></i></a>
+        </h2>
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -232,9 +244,12 @@
 
     <!-- Annual Tab -->
     <div class="tab-pane fade" id="annual" role="tabpanel">
-        <h2>Annual Sales Report</h2>
-        <a href="{{ url_for('sales.export_excel', period='annual', start_date=start_date, end_date=end_date) }}" class="btn btn-success mb-3">Export to Excel</a>
-        <a href="{{ url_for('sales.export_pdf', period='annual', start_date=start_date, end_date=end_date) }}" class="btn btn-danger mb-3">Export to PDF</a>
+        <h2>
+            Annual Sales Report
+            <a href="{{ url_for('sales.sales') }}" class="float-end ms-2" title="Back to Sales"><i class="fas fa-arrow-left"></i></a>
+            <a href="{{ url_for('sales.export_pdf', period='annual', start_date=start_date, end_date=end_date) }}" class="float-end ms-2" title="Export to PDF"><i class="fas fa-file-pdf text-danger"></i></a>
+            <a href="{{ url_for('sales.export_excel', period='annual', start_date=start_date, end_date=end_date) }}" class="float-end" title="Export to Excel"><i class="fas fa-file-excel text-success"></i></a>
+        </h2>
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -281,25 +296,26 @@
 <!-- Include Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Define colors array in JavaScript
-    const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
+    // Define colors array for actual sales in JavaScript
+    const actualColors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
+    const plannedColor = 'rgba(150, 150, 150, 0.5)'; // Grayish color for planned sales
 
     // Function to create chart datasets dynamically
     function createChartDatasets(chartData, period) {
         const datasets = [];
         let index = 0;
         for (const [key, actualValues] of Object.entries(chartData[period].actual_sales)) {
-            const colorIndex = index % colors.length;
+            const colorIndex = index % actualColors.length;
             datasets.push({
                 label: `${key} (Actual)`,
                 data: actualValues,
-                backgroundColor: colors[colorIndex],
+                backgroundColor: actualColors[colorIndex],
                 stack: 'Stack 0'
             });
             datasets.push({
                 label: `${key} (Planned)`,
                 data: chartData[period].planned_sales[key],
-                backgroundColor: colors[colorIndex].replace('1)', '0.3)'),
+                backgroundColor: plannedColor,
                 stack: 'Stack 1'
             });
             index++;

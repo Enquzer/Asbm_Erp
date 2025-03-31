@@ -75,19 +75,21 @@ def purchase_request():
     if request.method == 'POST':
         request_code = request.form.get('request_code') or f"PUR-{PurchaseRequest.query.count() + 1:04d}"
         dept_name = request.form.get('dept_name')
+        duty_station_id = request.form.get('duty_station_id')
         item_name = request.form.get('item_name')
         description = request.form.get('description')
         unit_of_measure = request.form.get('unit_of_measure')
         quantity = request.form.get('quantity')
         expected_delivery_date = request.form.get('expected_delivery_date')
 
-        if not all([request_code, dept_name, item_name, unit_of_measure, quantity, expected_delivery_date]):
+        if not all([dept_name, duty_station_id, item_name, unit_of_measure, quantity, expected_delivery_date]):
             flash('All fields are required!', 'danger')
-            return redirect(url_for('purchasing.purchasing'))
+            return redirect(url_for('purchasing.purchase_request'))
 
         new_request = PurchaseRequest(
             request_code=request_code,
             dept_name=dept_name,
+            duty_station_id=int(duty_station_id),
             requested_by_id=current_user.id,
             item_name=item_name,
             description=description,
@@ -100,8 +102,11 @@ def purchase_request():
         db.session.commit()
         send_notification(f"New purchase request {request_code} submitted by {current_user.username}", "Purchasing")
         flash('Purchase request submitted!', 'success')
-        return redirect(url_for('purchasing.purchasing'))
-    return redirect(url_for('purchasing.purchasing'))
+        return redirect(url_for('purchasing.purchase_request'))
+    
+    purchase_requests = PurchaseRequest.query.order_by(PurchaseRequest.created_at.desc()).all()
+    duty_stations = DutyStation.query.all()
+    return render_template('purchase_request.html', purchase_requests=purchase_requests, duty_stations=duty_stations)
 
 @purchasing_bp.route('/fulfill_request/<int:request_id>', methods=['POST'])
 @login_required
@@ -132,7 +137,7 @@ def fulfill_request(request_id):
         supplier_id=supplier.id,
         status="Fulfilled",
         cost_category=req.dept_name,
-        duty_station_id=current_user.duty_station_id if hasattr(current_user, 'duty_station_id') else 1,
+        duty_station_id=req.duty_station_id,
         description=req.description,
         registered_date=datetime.utcnow()
     )
@@ -438,7 +443,6 @@ def report_data():
         'Registered Date': o.registered_date
     } for o in orders])
 
-    # Month Total Expense Per Duty Station
     total_expense = df.groupby('Duty Station')['Total Price'].sum().reset_index()
     total_expense['%'] = (total_expense['Total Price'] / total_expense['Total Price'].sum() * 100).round(2)
     plt.figure(figsize=(10, 6))
@@ -452,7 +456,6 @@ def report_data():
     bar_chart = base64.b64encode(buf.getvalue()).decode('utf-8')
     plt.close()
 
-    # Pie Chart for % Share
     plt.figure(figsize=(8, 8))
     plt.pie(total_expense['%'], labels=total_expense['Duty Station'], autopct='%1.1f%%', startangle=90)
     plt.title('% Share of Total Expense')
@@ -463,7 +466,6 @@ def report_data():
     pie_chart = base64.b64encode(buf.getvalue()).decode('utf-8')
     plt.close()
 
-    # Top 5 Expensive Items per Duty Station
     top_items = df.groupby(['Duty Station', 'Description'])['Total Price'].sum().reset_index()
     top_items = top_items.groupby('Duty Station').apply(lambda x: x.nlargest(5, 'Total Price')).reset_index(drop=True)
     plt.figure(figsize=(12, 8))
@@ -476,7 +478,6 @@ def report_data():
     top_items_chart = base64.b64encode(buf.getvalue()).decode('utf-8')
     plt.close()
 
-    # Spending Trend Over Time
     df['Month'] = df['Registered Date'].apply(lambda x: x.strftime('%Y-%m'))
     trend = df.groupby('Month')['Total Price'].sum().reset_index()
     plt.figure(figsize=(10, 6))

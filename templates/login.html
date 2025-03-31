@@ -1,22 +1,93 @@
 <!-- templates/login.html -->
+<!-- templates/login.html -->
 {% extends 'base.html' %}
 {% block title %}Login{% endblock %}
 {% block content %}
-    <h1>Login</h1>
-    <form method="POST" action="{{ url_for('user_management.login') }}">
-        {{ form.hidden_tag() }}
-        <div class="mb-3">
-            {{ form.username.label(class="form-label") }}
-            {{ form.username(class="form-control") }}
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h2 class="text-center mb-4 fw-bold">Welcome Back</h2>
+                    <form method="POST" action="{{ url_for('user_management.login') }}" class="needs-validation" novalidate>
+                        {{ form.hidden_tag() }}
+                        <div class="mb-3">
+                            {{ form.username.label(class="form-label fw-medium") }}
+                            {{ form.username(class="form-control form-control-lg", placeholder="Enter username", required=True) }}
+                            <div class="invalid-feedback">
+                                Please enter a username.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            {{ form.password.label(class="form-label fw-medium") }}
+                            {{ form.password(class="form-control form-control-lg", placeholder="Enter password", required=True) }}
+                            <div class="invalid-feedback">
+                                Please enter a password.
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.remember(class="form-check-input") }}
+                                {{ form.remember.label(class="form-check-label text-muted") }}
+                            </div>
+                        </div>
+                        {{ form.submit(class="btn btn-primary btn-lg w-100 fw-medium") }}
+                    </form>
+                    <p class="text-center mt-3 text-muted small">
+                        Don't have an account? 
+                        <a href="{{ url_for('user_management.register') }}" class="text-decoration-none">
+                            Sign up
+                        </a>
+                    </p>
+                </div>
+            </div>
         </div>
-        <div class="mb-3">
-            {{ form.password.label(class="form-label") }}
-            {{ form.password(class="form-control") }}
-        </div>
-        <div class="mb-3 form-check">
-            {{ form.remember(class="form-check-input") }}
-            {{ form.remember.label(class="form-check-label") }}
-        </div>
-        {{ form.submit(class="btn btn-primary") }}
-    </form>
+    </div>
+</div>
+
+
+<style>
+    .card {
+        border-radius: 10px;
+        transition: transform 0.2s ease-in-out;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .form-control:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .btn-primary {
+        background-color: #0d6efd;
+        border: none;
+        padding: 12px;
+        transition: background-color 0.2s ease-in-out;
+    }
+    
+    .btn-primary:hover {
+        background-color: #0b5ed7;
+    }
+</style>
+
+<script>
+    // Bootstrap form validation
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+</script>
 {% endblock %}

@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, send_f
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from modules.models import Product, Sale, ProductConfig, ProductPrice, ProductPlan
-from modules.production_models import db
+from database import db
 import pandas as pd
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
@@ -19,19 +19,6 @@ def get_product_price(product_id, sale_date):
         (ProductPrice.end_date >= sale_date) | (ProductPrice.end_date.is_(None))
     ).order_by(ProductPrice.start_date.desc()).first()
     return price.price if price else 0
-
-def get_period_category(start_date, end_date):
-    duration = (end_date - start_date).days + 1
-    if duration <= 7:
-        return 'weekly'
-    elif duration <= 31:
-        return 'monthly'
-    elif duration <= 91:
-        return 'quarterly'
-    elif duration <= 182:
-        return 'bi_annual'
-    else:
-        return 'annual'
 
 def get_days_in_month(year, month):
     if month == 2:
@@ -154,7 +141,7 @@ def sales_report():
         for product_key, data in week_sales.items():
             product_id, sale_type = product_key.split('_')
             product = Product.query.get(product_id)
-            relevant_plan = next((p for p in plans if p.product_id == int(product_id) and p.start_date <= current_date and p.end_date >= week_end), None)
+            relevant_plan = next((p for p in plans if p.product_id == int(product_id) and p.start_date <= week_end and p.end_date >= current_date), None)
             sales_data['weekly']['data'].append({
                 'product_name': product.name,
                 'sale_type': sale_type,
@@ -192,7 +179,7 @@ def sales_report():
         for product_key, data in month_sales.items():
             product_id, sale_type = product_key.split('_')
             product = Product.query.get(product_id)
-            relevant_plan = next((p for p in plans if p.product_id == int(product_id) and p.start_date <= current_date and p.end_date >= month_end), None)
+            relevant_plan = next((p for p in plans if p.product_id == int(product_id) and p.start_date <= month_end and p.end_date >= current_date), None)
             sales_data['monthly']['data'].append({
                 'product_name': product.name,
                 'sale_type': sale_type,
@@ -229,7 +216,7 @@ def sales_report():
         for product_key, data in quarter_sales.items():
             product_id, sale_type = product_key.split('_')
             product = Product.query.get(product_id)
-            relevant_plan = next((p for p in plans if p.product_id == int(product_id) and p.start_date <= current_date and p.end_date >= quarter_end), None)
+            relevant_plan = next((p for p in plans if p.product_id == int(product_id) and p.start_date <= quarter_end and p.end_date >= current_date), None)
             sales_data['quarterly']['data'].append({
                 'product_name': product.name,
                 'sale_type': sale_type,
@@ -266,7 +253,7 @@ def sales_report():
         for product_key, data in bi_annual_sales.items():
             product_id, sale_type = product_key.split('_')
             product = Product.query.get(product_id)
-            relevant_plan = next((p for p in plans if p.product_id == int(product_id) and p.start_date <= current_date and p.end_date >= bi_annual_end), None)
+            relevant_plan = next((p for p in plans if p.product_id == int(product_id) and p.start_date <= bi_annual_end and p.end_date >= current_date), None)
             sales_data['bi_annual']['data'].append({
                 'product_name': product.name,
                 'sale_type': sale_type,
@@ -304,7 +291,7 @@ def sales_report():
         for product_key, data in year_sales.items():
             product_id, sale_type = product_key.split('_')
             product = Product.query.get(product_id)
-            relevant_plan = next((p for p in plans if p.product_id == int(product_id) and p.start_date <= current_date and p.end_date >= year_end), None)
+            relevant_plan = next((p for p in plans if p.product_id == int(product_id) and p.start_date <= year_end and p.end_date >= current_date), None)
             sales_data['annual']['data'].append({
                 'product_name': product.name,
                 'sale_type': sale_type,
@@ -399,7 +386,7 @@ def export_excel(period):
             for product_key, data in week_sales.items():
                 product_id, sale_type = product_key.split('_')
                 product = Product.query.get(product_id)
-                relevant_plan = next((p for p in plans if p.product_id == int(product_id) and p.start_date <= current_date and p.end_date >= week_end), None)
+                relevant_plan = next((p for p in plans if p.product_id == int(product_id) and p.start_date <= week_end and p.end_date >= current_date), None)
                 sales_data['weekly']['data'].append({
                     'product_name': product.name,
                     'sale_type': sale_type,
@@ -491,7 +478,7 @@ def export_pdf(period):
             for product_key, data in week_sales.items():
                 product_id, sale_type = product_key.split('_')
                 product = Product.query.get(product_id)
-                relevant_plan = next((p for p in plans if p.product_id == int(product_id) and p.start_date <= current_date and p.end_date >= week_end), None)
+                relevant_plan = next((p for p in plans if p.product_id == int(product_id) and p.start_date <= week_end and p.end_date >= current_date), None)
                 sales_data['weekly']['data'].append({
                     'product_name': product.name,
                     'sale_type': sale_type,

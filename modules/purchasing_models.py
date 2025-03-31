@@ -14,6 +14,7 @@ class PurchaseRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     request_code = db.Column(db.String(20), unique=True, nullable=False)
     dept_name = db.Column(db.String(50), nullable=False)
+    duty_station_id = db.Column(db.Integer, db.ForeignKey('duty_stations.id'), nullable=False)
     requested_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     item_name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
@@ -23,6 +24,7 @@ class PurchaseRequest(db.Model):
     status = db.Column(db.String(20), default="Pending")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     requested_by = db.relationship('User', backref='purchase_requests')
+    duty_station = db.relationship('DutyStation', backref='purchase_requests')
     procurement_orders = db.relationship('ProcurementOrder', backref='request', lazy=True)
 
 class ProcurementOrder(db.Model):
@@ -34,14 +36,14 @@ class ProcurementOrder(db.Model):
     quantity = db.Column(db.Integer, nullable=False)
     unit_of_measure = db.Column(db.String(20), nullable=False)
     unit_price = db.Column(db.Float, nullable=True)
-    total_price = db.Column(db.Float, nullable=False, default=0.0)  # Changed to nullable=False
+    total_price = db.Column(db.Float, nullable=False, default=0.0)
     status = db.Column(db.String(20), default="Pending")
     cost_category = db.Column(db.String(50))
     duty_station_id = db.Column(db.Integer, db.ForeignKey('duty_stations.id'), nullable=True)
     supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=True)
     cost_type = db.Column(db.String(20))
     payment_status = db.Column(db.String(20), default="Unpaid")
-    payment_amount = db.Column(db.Float, nullable=False, default=0.0)  # Ensure consistency
+    payment_amount = db.Column(db.Float, nullable=False, default=0.0)
     payment_date = db.Column(db.Date, nullable=True)
     description = db.Column(db.Text)
     registered_date = db.Column(db.DateTime, default=datetime.utcnow)
@@ -56,8 +58,8 @@ class YearlyPurchasePlan(db.Model):
     duty_station_id = db.Column(db.Integer, db.ForeignKey('duty_stations.id'), nullable=False)
     cost_category = db.Column(db.String(50), nullable=False)
     planned_cost = db.Column(db.Float, nullable=False)
-    q1_cost = db.Column(db.Float, default=0.0)  # Quarter 1 cost
-    q2_cost = db.Column(db.Float, default=0.0)  # Quarter 2 cost
-    q3_cost = db.Column(db.Float, default=0.0)  # Quarter 3 cost
-    q4_cost = db.Column(db.Float, default=0.0)  # Quarter 4 cost
+    q1_cost = db.Column(db.Float, default=0.0)
+    q2_cost = db.Column(db.Float, default=0.0)
+    q3_cost = db.Column(db.Float, default=0.0)
+    q4_cost = db.Column(db.Float, default=0.0)
     duty_station = db.relationship('DutyStation', backref='yearly_plans')
