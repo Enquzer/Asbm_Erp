@@ -256,6 +256,18 @@ class User(UserMixin, db.Model):
     def is_admin(self):
         return self.role.lower() == 'admin'
 
+    def is_authenticated(self):
+        return True
+
+    def is_active(self):
+        return True
+
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return str(self.id)
+
 class Department(db.Model):
     __tablename__ = 'departments'
     id = db.Column(db.Integer, primary_key=True)

@@ -1,4 +1,3 @@
-# main.py
 import os
 import time
 from datetime import datetime
@@ -22,17 +21,8 @@ except ImportError as e:
     logging.error(f"Missing required dependency: {str(e)}. Please install with 'pip install pandas xlsxwriter matplotlib seaborn reportlab'")
     raise
 
-# Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key'  # Replace with a secure key
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance', 'asbm_erp.db')}?timeout=10"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Initialize CSRF protection
-csrf = CSRFProtect(app)
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
@@ -65,8 +55,6 @@ migrate = Migrate(app, db)
 
 csrf.exempt('purchasing.search_suppliers')
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 logger.debug(f"Database URI: {app.config['SQLALCHEMY_DATABASE_URI']}")
 
 from sqlalchemy import event
@@ -182,17 +170,16 @@ def init_db():
             logger.error("Failed to initialize database after all retries due to persistent lock.")
             raise RuntimeError("Database initialization failed due to persistent lock.")
 
-        from modules.models import User, DutyStation, Product, PurchaseOrder, Customer, Order, Sale
+        from modules.models import User, DutyStation, Product, PurchaseOrder, Customer, Order, Sale, Employee
         from modules.purchasing_models import PurchaseRequest, ProcurementOrder, Supplier, YearlyPurchasePlan
         from modules.production_models import Machine, ProductionConfig, ProductionRecord
 
         admin_user = User.query.filter_by(username='admin').first()
         if admin_user:
-            logger.debug(f"Admin user found with hash: {admin_user.password_hash}")
             if not admin_user.check_password('admin'):
                 admin_user.set_password('admin')
                 db.session.commit()
-                logger.info("Admin password forcefully reset to 'admin'.")
+                logger.info("Admin password reset to 'admin'.")
         else:
             admin_user = User(
                 username='admin',
@@ -218,7 +205,7 @@ def init_db():
             admin_user.set_password('admin')
             db.session.add(admin_user)
             db.session.commit()
-            logger.info("Admin user recreated with username 'admin' and password 'admin'.")
+            logger.info("Admin user created with username 'admin' and password 'admin'.")
 
         duty_stations = [
             DutyStation(id=1, name='Sendafa'),
@@ -231,6 +218,43 @@ def init_db():
             if not DutyStation.query.filter_by(id=ds.id).first():
                 db.session.add(ds)
         db.session.commit()
+
+        if not Employee.query.filter_by(name='John Doe').first():
+            emp1 = Employee(
+                name='John Doe',
+                title='Manager',
+                phone_number='0912345678',
+                monthly_salary=5000.0,
+                hire_date=datetime.strptime('2023-01-01', '%Y-%m-%d').date(),
+                duty_station_id=1,
+                birth_date=datetime.strptime('1980-01-01', '%Y-%m-%d').date(),
+                gender='Male',
+                department='IT',
+                management_status='Active',
+                job_grade='A',
+                step=1,
+                additional_benefits=500.0
+            )
+            db.session.add(emp1)
+        if not Employee.query.filter_by(name='Jane Smith').first():
+            emp2 = Employee(
+                name='Jane Smith',
+                title='Developer',
+                phone_number='0987654321',
+                monthly_salary=4000.0,
+                hire_date=datetime.strptime('2023-02-01', '%Y-%m-%d').date(),
+                duty_station_id=2,
+                birth_date=datetime.strptime('1985-05-15', '%Y-%m-%d').date(),
+                gender='Female',
+                department='IT',
+                management_status='Active',
+                job_grade='B',
+                step=2,
+                additional_benefits=400.0
+            )
+            db.session.add(emp2)
+        db.session.commit()
+        logger.info("Dummy employees added: John Doe, Jane Smith")
 
         if not Customer.query.filter_by(email='customer@example.com').first():
             sample_customer = Customer(

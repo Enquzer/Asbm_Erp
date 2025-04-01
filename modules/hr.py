@@ -1,24 +1,25 @@
-# modules/hr.py
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, send_file
 from flask_login import login_required, current_user
 from database import db
 from modules.models import Employee, DutyStation
 from modules.forms import EmployeeForm
 from flask_wtf.csrf import validate_csrf, CSRFError
-import os
 from werkzeug.utils import secure_filename
 from datetime import datetime
-import json
-from dateutil.relativedelta import relativedelta
+import os
 import logging
+from sqlalchemy.exc import OperationalError
+import time
+import pandas as pd
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from io import BytesIO
 
-# Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 hr_bp = Blueprint('hr', __name__, url_prefix='/hr')
 
-# Ensure upload directories exist
 def ensure_upload_dirs():
     photo_dir = os.path.join('static', 'uploads', 'employee_photos')
     cv_dir = os.path.join('static', 'uploads', 'employee_cvs')
@@ -30,226 +31,281 @@ def ensure_upload_dirs():
 @login_required
 def hr():
     if not current_user.has_permission('hr'):
-        flash('You do not have permission to access HR module.', 'danger')
+        flash('No permission for HR module.', 'danger')
         return redirect(url_for('dashboard.dashboard'))
 
     form = EmployeeForm()
     duty_stations = DutyStation.query.all()
+    # Optimize manager dropdown by filtering active employees
+    active_employees = Employee.query.filter_by(management_status='Active').all()
     form.duty_station_id.choices = [(ds.id, ds.name) for ds in duty_stations]
-    form.manager_id.choices = [(0, 'None')] + [(emp.id, emp.name) for emp in Employee.query.all()]
+    form.manager_id.choices = [(0, 'None')] + [(emp.id, emp.name) for emp in active_employees]
 
-    # Handle filter form
-    name_filter = request.args.get('name', '')
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
-    duty_station_id = request.args.get('duty_station_id')
-    hire_date = request.args.get('hire_date')
-
+    # Search and Filter Logic
     query = Employee.query
-    if name_filter:
-        query = query.filter(Employee.name.ilike(f'%{name_filter}%'))
+    search_name = request.args.get('search_name', '')
+    duty_station_id = request.args.get('duty_station_id', 'all')
+    start_date = request.args.get('start_date', '')
+    end_date = request.args.get('end_date', '')
+
+    if search_name:
+        query = query.filter(Employee.name.ilike(f'%{search_name}%'))
+    if duty_station_id != 'all':
+        query = query.filter(Employee.duty_station_id == int(duty_station_id))
     if start_date:
-        query = query.filter(Employee.created_at >= datetime.strptime(start_date, '%Y-%m-%d'))
+        try:
+            query = query.filter(Employee.hire_date >= datetime.strptime(start_date, '%Y-%m-%d'))
+        except ValueError:
+            flash('Invalid start date format. Use YYYY-MM-DD.', 'danger')
+            start_date = ''
     if end_date:
-        query = query.filter(Employee.created_at <= datetime.strptime(end_date, '%Y-%m-%d'))
-    if duty_station_id:
-        query = query.filter_by(duty_station_id=duty_station_id)
-    if hire_date:
-        query = query.filter_by(hire_date=datetime.strptime(hire_date, '%Y-%m-%d').date())
+        try:
+            query = query.filter(Employee.hire_date <= datetime.strptime(end_date, '%Y-%m-%d'))
+        except ValueError:
+            flash('Invalid end date format. Use YYYY-MM-DD.', 'danger')
+            end_date = ''
+
     employees = query.all()
 
-    # Calculate monthly expenses and employee counts per duty station
-    start_date_chart = request.args.get('start_date_chart', (datetime.now().replace(day=1) - relativedelta(months=1)).strftime('%Y-%m-%d'))
-    end_date_chart = request.args.get('end_date_chart', datetime.now().strftime('%Y-%m-%d'))
-    duty_station_data = {}
+    # Chart Data
+    salary_by_duty_station = {}
+    employee_distribution = {}
     for ds in duty_stations:
-        employees_in_ds = Employee.query.filter_by(duty_station_id=ds.id).all()
-        total_expense = sum(e.monthly_salary + (e.additional_benefits or 0) for e in employees_in_ds if start_date_chart <= e.created_at.strftime('%Y-%m-%d') <= end_date_chart)
-        duty_station_data[ds.name] = {
-            'expense': total_expense,
-            'employee_count': len(employees_in_ds)
-        }
+        ds_employees = [emp for emp in employees if emp.duty_station_id == ds.id]
+        total_salary = sum(emp.monthly_salary for emp in ds_employees)
+        salary_by_duty_station[ds.name] = total_salary
+        employee_distribution[ds.name] = len(ds_employees)
 
-    # Handle POST requests (e.g., remove, modify, add)
+    # Fallback for empty data
+    if not salary_by_duty_station:
+        salary_by_duty_station = {"No Data": 0}
+    if not employee_distribution:
+        employee_distribution = {"No Data": 0}
+
+    # Log chart data for debugging
+    logger.debug(f"Salary by duty station: {salary_by_duty_station}")
+    logger.debug(f"Employee distribution: {employee_distribution}")
+
+    # Convert dictionary keys and values to lists for JSON serialization
+    salary_labels = list(salary_by_duty_station.keys())
+    salary_data = list(salary_by_duty_station.values())
+    distribution_labels = list(employee_distribution.keys())
+    distribution_data = list(employee_distribution.values())
+
+    # Handle Form Submission
     if request.method == 'POST':
-        # Handle JSON requests (e.g., remove)
-        if request.headers.get('Content-Type') == 'application/json':
-            data = request.get_json()
-            action = data.get('action')
+        try:
+            validate_csrf(request.form.get('csrf_token'))
+        except CSRFError:
+            return jsonify({'status': 'error', 'message': 'Invalid CSRF token'}), 403
 
-            if action == 'remove_employee':
-                csrf_token = request.headers.get('X-CSRFToken')
-                if not csrf_token:
-                    logger.error("No CSRF token provided in request headers")
-                    return jsonify({'status': 'error', 'message': 'CSRF token missing'}), 403
+        action = request.form.get('action')
 
+        if action == 'add_employee':
+            photo_dir, cv_dir = ensure_upload_dirs()
+            photo_path = None
+            if form.photo.data:
+                photo = form.photo.data
+                photo_filename = secure_filename(photo.filename)
+                photo_path = os.path.join(photo_dir, photo_filename)
                 try:
-                    validate_csrf(csrf_token)
-                    logger.debug("CSRF token validated successfully")
-                except CSRFError as e:
-                    logger.error(f"CSRF validation failed: {str(e)}")
-                    return jsonify({'status': 'error', 'message': 'Invalid CSRF token'}), 403
-
-                employee_id = data.get('employee_id')
-                if not employee_id:
-                    logger.error("Employee ID not provided in request")
-                    return jsonify({'status': 'error', 'message': 'Employee ID required'}), 400
-
-                employee = Employee.query.get(employee_id)
-                if not employee:
-                    logger.warning(f"Employee with ID {employee_id} not found")
-                    return jsonify({'status': 'error', 'message': 'Employee not found'}), 404
-
-                try:
-                    db.session.delete(employee)
-                    db.session.commit()
-                    logger.info(f"Employee with ID {employee_id} removed successfully")
-                    return jsonify({
-                        'status': 'success',
-                        'message': 'Employee removed successfully',
-                        'employee_id': employee_id
-                    }), 200
-                except Exception as e:
-                    db.session.rollback()
-                    logger.error(f"Database error removing employee ID {employee_id}: {str(e)}")
-                    return jsonify({'status': 'error', 'message': f'Database error: {str(e)}'}), 500
-
-        # Handle form submissions (e.g., add, modify)
-        else:
-            try:
-                validate_csrf(request.form.get('csrf_token'))
-                logger.debug("CSRF token validated successfully for form submission")
-            except CSRFError as e:
-                logger.error(f"CSRF validation failed: {str(e)}")
-                return jsonify({'status': 'error', 'message': 'Invalid CSRF token'}), 403
-
-            action = request.form.get('action')
-
-            if action == 'add_employee':
-                photo_dir, cv_dir = ensure_upload_dirs()
-                photo_path = None
-                if form.photo.data:
-                    photo = form.photo.data
-                    photo_filename = secure_filename(photo.filename)
-                    photo_path = os.path.join(photo_dir, photo_filename)
                     photo.save(photo_path)
-                cv_path = None
-                if form.cv.data:
-                    cv = form.cv.data
-                    cv_filename = secure_filename(cv.filename)
-                    cv_path = os.path.join(cv_dir, cv_filename)
+                except Exception as e:
+                    logger.error(f"Failed to save photo: {e}")
+                    return jsonify({'status': 'error', 'message': 'Failed to save photo'}), 500
+            cv_path = None
+            if form.cv.data:
+                cv = form.cv.data
+                cv_filename = secure_filename(cv.filename)
+                cv_path = os.path.join(cv_dir, cv_filename)
+                try:
                     cv.save(cv_path)
+                except Exception as e:
+                    logger.error(f"Failed to save CV: {e}")
+                    return jsonify({'status': 'error', 'message': 'Failed to save CV'}), 500
 
-                employee = Employee(
-                    name=form.name.data,
-                    address_woreda=form.address_woreda.data,
-                    address_kifle_ketema=form.address_kifle_ketema.data,
-                    phone_number=form.phone_number.data,
-                    emergency_contact_name=form.emergency_contact_name.data,
-                    emergency_contact_phone=form.emergency_contact_phone.data,
-                    photo_path=photo_path,
-                    cv_path=cv_path,
-                    manager_id=form.manager_id.data if form.manager_id.data != 0 else None,
-                    location=form.location.data,
-                    birth_date=form.birth_date.data,
-                    hire_date=form.hire_date.data,
-                    internal_notes=form.internal_notes.data,
-                    monthly_salary=form.monthly_salary.data,
-                    additional_benefits=form.additional_benefits.data,
-                    title=form.title.data,
-                    gender=form.gender.data,
-                    department=form.department.data,
-                    contract_end_date=form.contract_end_date.data,
-                    seniority=form.seniority.data,
-                    management_status=form.management_status.data,
-                    job_grade=form.job_grade.data,
-                    step=form.step.data,
-                    basic_salary=form.basic_salary.data,
-                    travel_allowance=form.travel_allowance.data,
-                    other_allowance=form.other_allowance.data,
-                    non_taxable_allowance=form.non_taxable_allowance.data,
-                    other_deduction=form.other_deduction.data,
-                    lunch_deduction_employee=form.lunch_deduction_employee.data,
-                    lunch_deduction_court=form.lunch_deduction_court.data,
-                    duty_station_id=form.duty_station_id.data
-                )
-                db.session.add(employee)
-                db.session.commit()
-                logger.info(f"Employee {employee.name} added successfully")
-                return jsonify({'status': 'success', 'message': 'Employee added successfully', 'action': 'continue'})
+            employee = Employee(
+                name=request.form.get('name'),
+                address_woreda=request.form.get('address_woreda'),
+                address_kifle_ketema=request.form.get('address_kifle_ketema'),
+                phone_number=request.form.get('phone_number'),
+                emergency_contact_name=request.form.get('emergency_contact_name'),
+                emergency_contact_phone=request.form.get('emergency_contact_phone'),
+                photo_path=photo_path,
+                cv_path=cv_path,
+                manager_id=int(request.form.get('manager_id')) if request.form.get('manager_id') != '0' else None,
+                location=request.form.get('location'),
+                birth_date=datetime.strptime(request.form.get('birth_date'), '%Y-%m-%d').date(),
+                hire_date=datetime.strptime(request.form.get('hire_date'), '%Y-%m-%d').date(),
+                internal_notes=request.form.get('internal_notes'),
+                monthly_salary=float(request.form.get('monthly_salary', 0.0)),
+                additional_benefits=float(request.form.get('additional_benefits', 0.0)) or 0.0,
+                title=request.form.get('title'),
+                gender=request.form.get('gender'),
+                department=request.form.get('department'),
+                contract_end_date=datetime.strptime(request.form.get('contract_end_date'), '%Y-%m-%d').date() if request.form.get('contract_end_date') else None,
+                seniority=int(request.form.get('seniority', 0)) or 0,
+                management_status=request.form.get('management_status', 'Active'),
+                job_grade=request.form.get('job_grade'),
+                step=int(request.form.get('step', 0)),
+                travel_allowance=float(request.form.get('travel_allowance', 0.0)) or 0.0,
+                other_allowance=float(request.form.get('other_allowance', 0.0)) or 0.0,
+                non_taxable_allowance=float(request.form.get('non_taxable_allowance', 0.0)) or 0.0,
+                other_deduction=float(request.form.get('other_deduction', 0.0)) or 0.0,
+                lunch_deduction_employee=float(request.form.get('lunch_deduction_employee', 0.0)) or 0.0,
+                lunch_deduction_court=float(request.form.get('lunch_deduction_court', 0.0)) or 0.0,
+                duty_station_id=int(request.form.get('duty_station_id'))
+            )
+            db.session.add(employee)
+            max_retries = 5
+            for attempt in range(max_retries):
+                try:
+                    db.session.commit()
+                    return jsonify({'status': 'success', 'message': f'Employee {employee.name} added successfully'})
+                except OperationalError as e:
+                    db.session.rollback()
+                    if "database is locked" in str(e):
+                        time.sleep(2)
+                    else:
+                        return jsonify({'status': 'error', 'message': str(e)}), 500
+            return jsonify({'status': 'error', 'message': 'Database locked'}), 500
 
-            elif action == 'modify_employee':
-                employee_id = request.form.get('employee_id')
-                logger.debug(f"Modifying employee with ID: {employee_id}, Form data: {dict(request.form)}")
-                employee = Employee.query.get(employee_id)
-                if employee:
+        elif action == 'modify_employee':
+            employee_id = request.form.get('employee_id')
+            employee = Employee.query.get(employee_id)
+            if employee:
+                employee.name = request.form.get('name', employee.name)
+                employee.address_woreda = request.form.get('address_woreda', employee.address_woreda)
+                employee.address_kifle_ketema = request.form.get('address_kifle_ketema', employee.address_kifle_ketema)
+                employee.phone_number = request.form.get('phone_number', employee.phone_number)
+                employee.emergency_contact_name = request.form.get('emergency_contact_name', employee.emergency_contact_name)
+                employee.emergency_contact_phone = request.form.get('emergency_contact_phone', employee.emergency_contact_phone)
+                employee.manager_id = int(request.form.get('manager_id')) if request.form.get('manager_id') != '0' else None
+                employee.location = request.form.get('location', employee.location)
+                birth_date = request.form.get('birth_date')
+                if birth_date:
+                    employee.birth_date = datetime.strptime(birth_date, '%Y-%m-%d').date()
+                hire_date = request.form.get('hire_date')
+                if hire_date:
+                    employee.hire_date = datetime.strptime(hire_date, '%Y-%m-%d').date()
+                employee.internal_notes = request.form.get('internal_notes', employee.internal_notes)
+                employee.monthly_salary = float(request.form.get('monthly_salary', employee.monthly_salary))
+                employee.additional_benefits = float(request.form.get('additional_benefits', employee.additional_benefits))
+                employee.title = request.form.get('title', employee.title)
+                employee.gender = request.form.get('gender', employee.gender)
+                employee.department = request.form.get('department', employee.department)
+                contract_end_date = request.form.get('contract_end_date')
+                employee.contract_end_date = datetime.strptime(contract_end_date, '%Y-%m-%d').date() if contract_end_date else employee.contract_end_date
+                employee.seniority = int(request.form.get('seniority', employee.seniority))
+                employee.management_status = request.form.get('management_status', employee.management_status)
+                employee.job_grade = request.form.get('job_grade', employee.job_grade)
+                employee.step = int(request.form.get('step', employee.step))
+                employee.travel_allowance = float(request.form.get('travel_allowance', employee.travel_allowance))
+                employee.other_allowance = float(request.form.get('other_allowance', employee.other_allowance))
+                employee.non_taxable_allowance = float(request.form.get('non_taxable_allowance', employee.non_taxable_allowance))
+                employee.other_deduction = float(request.form.get('other_deduction', employee.other_deduction))
+                employee.lunch_deduction_employee = float(request.form.get('lunch_deduction_employee', employee.lunch_deduction_employee))
+                employee.lunch_deduction_court = float(request.form.get('lunch_deduction_court', employee.lunch_deduction_court))
+                employee.duty_station_id = int(request.form.get('duty_station_id', employee.duty_station_id))
+                max_retries = 5
+                for attempt in range(max_retries):
                     try:
-                        # Update employee fields
-                        employee.name = request.form.get('name', employee.name)
-                        employee.address_woreda = request.form.get('address_woreda', employee.address_woreda)
-                        employee.address_kifle_ketema = request.form.get('address_kifle_ketema', employee.address_kifle_ketema)
-                        employee.phone_number = request.form.get('phone_number', employee.phone_number)
-                        employee.emergency_contact_name = request.form.get('emergency_contact_name', employee.emergency_contact_name)
-                        employee.emergency_contact_phone = request.form.get('emergency_contact_phone', employee.emergency_contact_phone)
-                        employee.monthly_salary = float(request.form.get('monthly_salary', employee.monthly_salary))
-                        employee.additional_benefits = float(request.form.get('additional_benefits', employee.additional_benefits))
-                        employee.title = request.form.get('title', employee.title)
-                        employee.gender = request.form.get('gender', employee.gender)
-                        employee.department = request.form.get('department', employee.department)
-                        employee.hire_date = datetime.strptime(request.form.get('hire_date'), '%Y-%m-%d').date() if request.form.get('hire_date') else employee.hire_date
-                        employee.duty_station_id = int(request.form.get('duty_station_id', employee.duty_station_id))
-
                         db.session.commit()
-                        logger.info(f"Employee with ID {employee_id} modified successfully")
-
-                        # Return updated employee data for UI
-                        updated_employee = {
+                        return jsonify({'status': 'success', 'message': f'Employee {employee.name} updated', 'employee': {
                             'id': employee.id,
                             'name': employee.name,
                             'title': employee.title,
-                            'department': employee.department,
-                            'location': employee.location,
                             'phone_number': employee.phone_number,
-                            'duty_station': employee.duty_station.name if employee.duty_station else 'N/A',
-                            'manager': employee.manager.name if employee.manager else 'None',
-                            'photo_path': employee.photo_path,
-                            'cv_path': employee.cv_path,
                             'monthly_salary': employee.monthly_salary,
-                            'additional_benefits': employee.additional_benefits,
                             'hire_date': employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else '',
-                            'created_at': employee.created_at.strftime('%Y-%m-%d %H:%M:%S') if employee.created_at else ''
-                        }
-                        return jsonify({
-                            'status': 'success',
-                            'message': 'Employee modified successfully',
-                            'employee': updated_employee
-                        }), 200
-                    except Exception as e:
+                            'duty_station': employee.duty_station.name if employee.duty_station else 'N/A',
+                            'department': employee.department,
+                            'gender': employee.gender,
+                            'job_grade': employee.job_grade,
+                            'location': employee.location,
+                            'additional_benefits': employee.additional_benefits,
+                            'created_at': employee.created_at.strftime('%Y-%m-%d') if employee.created_at else ''
+                        }})
+                    except OperationalError as e:
                         db.session.rollback()
-                        logger.error(f"Failed to modify employee with ID {employee_id}: {str(e)}")
-                        return jsonify({'status': 'error', 'message': f'Failed to modify employee: {str(e)}'}), 500
-                else:
-                    logger.warning(f"Employee with ID {employee_id} not found")
-                    return jsonify({'status': 'error', 'message': 'Employee not found'}), 404
+                        if "database is locked" in str(e):
+                            time.sleep(2)
+                        else:
+                            return jsonify({'status': 'error', 'message': str(e)}), 500
+                return jsonify({'status': 'error', 'message': 'Database locked'}), 500
+            return jsonify({'status': 'error', 'message': 'Employee not found'}), 404
 
-    return render_template('hr/hr.html', form=form, employees=employees, duty_station_data=duty_station_data,
-                          start_date_chart=start_date_chart, end_date_chart=end_date_chart, duty_stations=duty_stations)
+        elif action == 'remove_employee' and request.is_json:
+            data = request.get_json()
+            employee_id = data.get('employee_id')
+            employee = Employee.query.get(employee_id)
+            if employee:
+                db.session.delete(employee)
+                max_retries = 5
+                for attempt in range(max_retries):
+                    try:
+                        db.session.commit()
+                        return jsonify({'status': 'success', 'message': 'Employee removed', 'employee_id': employee_id})
+                    except OperationalError as e:
+                        db.session.rollback()
+                        if "database is locked" in str(e):
+                            time.sleep(2)
+                        else:
+                            return jsonify({'status': 'error', 'message': str(e)}), 500
+                return jsonify({'status': 'error', 'message': 'Database locked'}), 500
+            return jsonify({'status': 'error', 'message': 'Employee not found'}), 404
 
-@hr_bp.route('/add_employee', methods=['GET'])
+    return render_template('hr.html', form=form, employees=employees, duty_stations=duty_stations,
+                          salary_labels=salary_labels, salary_data=salary_data,
+                          distribution_labels=distribution_labels, distribution_data=distribution_data,
+                          search_name=search_name, duty_station_id=duty_station_id, start_date=start_date, end_date=end_date)
+
+@hr_bp.route('/export_excel')
 @login_required
-def add_employee_popup():
-    form = EmployeeForm()
-    duty_stations = DutyStation.query.all()
-    form.duty_station_id.choices = [(ds.id, ds.name) for ds in duty_stations]
-    form.manager_id.choices = [(0, 'None')] + [(emp.id, emp.name) for emp in Employee.query.all()]
-    return render_template('hr/add_employee.html', form=form)
+def export_excel():
+    employees = Employee.query.all()
+    data = []
+    for emp in employees:
+        data.append({
+            'ID': emp.id,
+            'Name': emp.name,
+            'Title': emp.title,
+            'Department': emp.department,
+            'Location': emp.location,
+            'Phone': emp.phone_number,
+            'Duty Station': emp.duty_station.name if emp.duty_station else 'N/A',
+            'Manager': emp.manager.name if emp.manager else 'None',
+            'Monthly Salary': emp.monthly_salary,
+            'Additional Benefits': emp.additional_benefits,
+            'Hire Date': emp.hire_date.strftime('%Y-%m-%d') if emp.hire_date else '',
+            'Uploaded Date': emp.created_at.strftime('%Y-%m-%d') if emp.created_at else ''
+        })
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, sheet_name='Employees', index=False)
+    output.seek(0)
+    return send_file(output, download_name='employees.xlsx', as_attachment=True)
 
-@hr_bp.route('/modify_employee/<int:employee_id>', methods=['GET'])
+@hr_bp.route('/export_pdf')
 @login_required
-def modify_employee_popup(employee_id):
-    employee = Employee.query.get_or_404(employee_id)
-    form = EmployeeForm(obj=employee)
-    duty_stations = DutyStation.query.all()
-    form.duty_station_id.choices = [(ds.id, ds.name) for ds in duty_stations]
-    form.manager_id.choices = [(0, 'None')] + [(emp.id, emp.name) for emp in Employee.query.all()]
-    return render_template('hr/modify_employee.html', form=form, employee_id=employee_id)
+def export_pdf():
+    employees = Employee.query.all()
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
+    y = height - 50
+    c.drawString(100, y, "Employee Report")
+    y -= 30
+    c.drawString(30, y, "ID  Name                Title       Department  Location    Phone       Duty Station  Manager  Salary  Benefits  Hire Date  Uploaded Date")
+    y -= 20
+    for emp in employees:
+        if y < 50:
+            c.showPage()
+            y = height - 50
+        line = f"{emp.id:<4}{emp.name[:20]:<20}{emp.title[:12]:<12}{emp.department[:12]:<12}{str(emp.location)[:12]:<12}{str(emp.phone_number)[:12]:<12}{emp.duty_station.name[:12] if emp.duty_station else 'N/A':<12}{emp.manager.name[:8] if emp.manager else 'None':<8}{emp.monthly_salary:<8.2f}{emp.additional_benefits:<10.2f}{emp.hire_date.strftime('%Y-%m-%d') if emp.hire_date else '':<11}{emp.created_at.strftime('%Y-%m-%d') if emp.created_at else ''}"
+        c.drawString(30, y, line)
+        y -= 20
+    c.save()
+    buffer.seek(0)
+    return send_file(buffer, download_name='employees.pdf', as_attachment=True)
