@@ -13,3 +13,4 @@ openpyxl
 opencv-python
 numpy
 python-docx
+selenium
