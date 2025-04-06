@@ -9,6 +9,7 @@ matplotlib
 seaborn
 reportlab
 qrcode
+openpyxl
 opencv-python
 numpy
 python-docx
