@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Upload Resource - ASBM ERP{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h1>Upload Resource</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.title.label(class="form-label") }}
+            {{ form.title(class="form-control", required=True) }}
+            <div class="invalid-feedback">
+                Please enter a title.
+            </div>
+        </div>
+        <div class="mb-3">
+            {{ form.category.label(class="form-label") }}
+            {{ form.category(class="form-select", required=True) }}
+            <div class="invalid-feedback">
+                Please select a category.
+            </div>
+        </div>
+        <div class="mb-3">
+            {{ form.file.label(class="form-label") }}
+            {{ form.file(class="form-control", required=True, accept=".pdf,.doc,.docx,.xls,.xlsx") }}
+            <small class="form-text text-muted">Max file size: 10MB. Allowed types: PDF, Word, Excel</small>
+            <div class="invalid-feedback">
+                Please upload a file.
+            </div>
+        </div>
+        {{ form.submit(class="btn btn-primary") }}
+    </form>
+</div>
+
+<script>
+    (function() {
+        'use strict';
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    })();
+</script>
+{% endblock %}

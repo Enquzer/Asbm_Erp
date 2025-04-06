@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Project Funding{% endblock %}
+{% block content %}
+<h1>Project Funding</h1>
+<form method="POST">
+    {{ csrf_token() }}
+    <select name="project_id" id="project_select" required>
+        <option value="">Select Project</option>
+        {% for project in projects %}
+        <option value="{{ project.id }}">{{ project.name }}</option>
+        {% endfor %}
+    </select>
+    <input type="text" name="new_project_name" id="new_project_name" placeholder="Or Enter New Project Name">
+    <input type="number" name="amount" placeholder="Amount" step="0.01" required>
+    <input type="date" name="funding_date" required>
+    <input type="date" name="start_date" placeholder="Project Start Date">
+    <input type="date" name="end_date" placeholder="Project End Date">
+    <input type="text" name="source" placeholder="Source" required>
+    <select name="duty_station_id" required>
+        {% for ds in duty_stations %}
+        <option value="{{ ds.id }}">{{ ds.name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-success">Add Funding</button>
+</form>
+<table class="table mt-3">
+    <thead>
+        <tr><th>Project</th><th>Amount</th><th>Funding Date</th><th>Start Date</th><th>End Date</th><th>Source</th><th>Duty Station</th></tr>
+    </thead>
+    <tbody>
+        {% for funding in funding_records %}
+        <tr>
+            <td>{{ funding.project.name if funding.project else 'N/A' }}</td>
+            <td>{{ funding.amount }}</td>
+            <td>{{ funding.funding_date }}</td>
+            <td>{{ funding.start_date if funding.start_date else 'N/A' }}</td>
+            <td>{{ funding.end_date if funding.end_date else 'N/A' }}</td>
+            <td>{{ funding.source }}</td>
+            <td>{{ funding.duty_station.name }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('admin_activities.project_funding_overview') }}" class="btn btn-info">View Overview</a>
+<a href="{{ url_for('admin_activities.export_pdf', section='project_funding') }}"><i class="fas fa-file-pdf"></i></a>
+<a href="{{ url_for('admin_activities.export_word', section='project_funding') }}"><i class="fas fa-file-word"></i></a>
+<a href="{{ url_for('admin_activities.export_excel', section='project_funding') }}"><i class="fas fa-file-excel"></i></a>
+{% endblock %}

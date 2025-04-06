@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Admin Letters{% endblock %}
+{% block content %}
+<h1>Admin Letters</h1>
+<form method="POST">
+    {{ csrf_token() }}
+    <select name="letter_type" required>
+        <option value="">Select Type</option>
+        <option value="Internal">Internal</option>
+        <option value="External">External</option>
+    </select>
+    <input type="text" name="recipient" placeholder="Recipient" required>
+    <input type="text" name="subject" placeholder="Subject" required>
+    <textarea name="content" placeholder="Content" required></textarea>
+    <select name="duty_station_id" required>
+        {% for ds in duty_stations %}
+        <option value="{{ ds.id }}">{{ ds.name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-success">Add Letter</button>
+</form>
+<table class="table mt-3">
+    <thead>
+        <tr><th>Type</th><th>Recipient</th><th>Subject</th><th>Duty Station</th><th>Created Date</th></tr>
+    </thead>
+    <tbody>
+        {% for letter in letters %}
+        <tr>
+            <td>{{ letter.letter_type }}</td>
+            <td>{{ letter.recipient }}</td>
+            <td>{{ letter.subject }}</td>
+            <td>{{ letter.duty_station.name }}</td>
+            <td>{{ letter.created_at }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('admin_activities.admin_letters_overview') }}" class="btn btn-info">View Overview</a>
+<a href="{{ url_for('admin_activities.export_pdf', section='admin_letters') }}"><i class="fas fa-file-pdf"></i></a>
+<a href="{{ url_for('admin_activities.export_word', section='admin_letters') }}"><i class="fas fa-file-word"></i></a>
+{% endblock %}

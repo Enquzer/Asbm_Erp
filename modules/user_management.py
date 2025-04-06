@@ -1,3 +1,4 @@
+# modules/user_management.py
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from modules.models import User, db
@@ -13,11 +14,9 @@ user_management_bp = Blueprint('user_management', __name__)
 UPLOAD_FOLDER = 'static/images/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
-# Logging setup
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Ensure upload folder exists and is writable
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
     logger.info(f"Created upload folder: {UPLOAD_FOLDER}")
@@ -103,6 +102,20 @@ def register():
                 logger.error(f"Error registering user: {str(e)}")
     return render_template('register.html', form=form, title='Register')
 
+@user_management_bp.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    form = LoginForm()  # Using LoginForm temporarily; replace with a proper ForgotPasswordForm if needed
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=form.username.data).first()
+        if user:
+            # Placeholder for password reset logic (e.g., send email)
+            flash('Password reset instructions have been sent to your email.', 'info')
+            logger.info(f"Password reset requested for '{user.username}'.")
+            return redirect(url_for('user_management.login'))
+        flash('Username not found.', 'danger')
+        logger.warning(f"Password reset failed: Username '{form.username.data}' not found.")
+    return render_template('forgot_password.html', form=form, title='Forgot Password')
+
 @user_management_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
@@ -124,7 +137,6 @@ def profile():
                     file_path = os.path.join(UPLOAD_FOLDER, new_filename)
                     logger.debug(f"Saving new profile picture to: {file_path}")
                     try:
-                        # Remove old picture if it exists
                         if current_user.profile_picture and current_user.profile_picture != 'placeholder_user.jpg':
                             old_path = os.path.join(UPLOAD_FOLDER, current_user.profile_picture)
                             if os.path.exists(old_path):
@@ -132,7 +144,6 @@ def profile():
                                 logger.info(f"Removed old picture: {old_path}")
                             else:
                                 logger.warning(f"Old picture not found: {old_path}")
-                        # Save new picture
                         file.save(file_path)
                         if os.path.exists(file_path):
                             current_user.profile_picture = new_filename

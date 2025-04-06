@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <h2>HR Management</h2>
+
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('hr.hr', tab='employees') }}">Employees</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('hr.hr', tab='overtime') }}">Overtime</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('hr.hr', tab='attendance') }}">Attendance</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('hr.hr', tab='leave') }}">Leave</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('hr.hr', tab='letters') }}">Letters</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('hr.hr', tab='contracts') }}">Contracts</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('hr.hr', tab='positions') }}">Positions</a></li>
+        <li class="nav-item"><a class="nav-link active" href="{{ url_for('hr.hr_dashboard') }}">Dashboard</a></li>
+    </ul>
+
+    <h3>HR Dashboard</h3>
+    <form method="GET" action="{{ url_for('hr.hr_dashboard') }}" class="mb-3">
+        <div class="row">
+            <div class="col-md-2">
+                <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+            </div>
+            <div class="col-md-2">
+                <select name="duty_station_id" class="form-control">
+                    <option value="all" {% if duty_station_id == 'all' %}selected{% endif %}>All Duty Stations</option>
+                    {% for ds in duty_stations %}
+                        <option value="{{ ds.id }}" {% if duty_station_id == ds.id|string %}selected{% endif %}>{{ ds.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="month" class="form-control">
+                    <option value="all" {% if month == 'all' %}selected{% endif %}>All Months</option>
+                    {% for i in range(1, 13) %}
+                        <option value="{{ i }}" {% if month == i|string %}selected{% endif %}>Month {{ i }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="year" class="form-control">
+                    <option value="all" {% if year == 'all' %}selected{% endif %}>All Years</option>
+                    {% for y in range(2020, 2026) %}
+                        <option value="{{ y }}" {% if year == y|string %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary">Filter</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="row">
+        <div class="col-md-6">
+            <h5>Gender Distribution Across Duty Stations</h5>
+            <canvas id="genderChart" height="200"></canvas>
+        </div>
+        <div class="col-md-6">
+            <h5>Leave Taken Per Month</h5>
+            <canvas id="leaveChart" height="200"></canvas>
+        </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <h5>Monthly Employee Turnover Per Duty Station</h5>
+            <canvas id="turnoverChart" height="200"></canvas>
+        </div>
+        <div class="col-md-6">
+            <h5>Promotions/Demotions/Warnings</h5>
+            <canvas id="actionChart" height="200"></canvas>
+        </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <h5>Absenteeism Rate (%)</h5>
+            <p>{{ absenteeism_rate }}</p>
+        </div>
+        <div class="col-md-4">
+            <h5>Average Tenure (Years)</h5>
+            <p>{{ average_tenure }}</p>
+        </div>
+        <div class="col-md-4">
+            <h5>Total Promotions/Demotions/Warnings</h5>
+            <p>Promotions: {{ total_promotions }} | Demotions: {{ total_demotions }} | Warnings: {{ total_warnings }}</p>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <h5>Generate Report</h5>
+            <a href="{{ url_for('hr.export_dashboard_report') }}" class="btn btn-success">Export Dashboard to Excel</a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const genderChart = new Chart(document.getElementById('genderChart').getContext('2d'), {
+    type: 'bar',
+    data: {{ gender_chart|tojson|safe }},
+    options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } },
+        plugins: { legend: { display: true } }
+    }
+});
+
+const leaveChart = new Chart(document.getElementById('leaveChart').getContext('2d'), {
+    type: 'bar',
+    data: {{ leave_chart|tojson|safe }},
+    options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } }
+    }
+});
+
+const turnoverChart = new Chart(document.getElementById('turnoverChart').getContext('2d'), {
+    type: 'line',
+    data: {{ turnover_chart|tojson|safe }},
+    options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } },
+        plugins: { legend: { display: true } }
+    }
+});
+
+const actionChart = new Chart(document.getElementById('actionChart').getContext('2d'), {
+    type: 'bar',
+    data: {{ action_chart|tojson|safe }},
+    options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } },
+        plugins: { legend: { display: true } }
+    }
+});
+</script>
+{% endblock %}

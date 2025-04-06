@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Manage Food/Fuel Records{% endblock %}
+{% block content %}
+<h1>Manage Food/Fuel Records</h1>
+<form method="POST">
+    {{ csrf_token() }}
+    <select name="type" required>
+        <option value="Food">Food</option>
+        <option value="Fuel">Fuel</option>
+    </select>
+    <textarea name="description" placeholder="Description"></textarea>
+    <input type="number" name="quantity" step="0.01" required>
+    <input type="number" name="cost" step="0.01" required>
+    <input type="date" name="date" required>
+    <select name="duty_station_id" required>
+        {% for ds in duty_stations %}
+        <option value="{{ ds.id }}">{{ ds.name }}</option>
+        {% endfor %}
+    </select>
+    <select name="payee_id">
+        <option value="">-- Select Payee --</option>
+        {% for emp in employees %}
+        <option value="{{ emp.id }}">{{ emp.name }}</option>
+        {% endfor %}
+    </select>
+    <input type="text" name="payee_name" placeholder="Or Enter New Payee Name">
+    <button type="submit" class="btn btn-success">Add Record</button>
+</form>
+<table class="table mt-3">
+    <thead>
+        <tr><th>Type</th><th>Quantity</th><th>Cost</th><th>Date</th><th>Payee</th><th>Duty Station</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+        {% for record in records %}
+        <tr>
+            <td>{{ record.type }}</td>
+            <td>{{ record.quantity }}</td>
+            <td>{{ record.cost }}</td>
+            <td>{{ record.date }}</td>
+            <td>{{ record.payee_name or record.payee.name }}</td>
+            <td>{{ record.duty_station.name }}</td>
+            <td>
+                <a href="{{ url_for('admin_activities.edit_food_fuel', id=record.id) }}"><i class="fas fa-edit"></i></a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('admin_activities.export_pdf', section='food_fuel') }}"><i class="fas fa-file-pdf"></i></a>
+<a href="{{ url_for('admin_activities.export_word', section='food_fuel') }}"><i class="fas fa-file-word"></i></a>
+{% endblock %}

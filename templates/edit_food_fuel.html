@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Edit Food/Fuel Record{% endblock %}
+{% block content %}
+<h1>Edit Food/Fuel Record</h1>
+<form method="POST">
+    {{ csrf_token() }}
+    <select name="type" required>
+        <option value="Food" {% if record.type == 'Food' %}selected{% endif %}>Food</option>
+        <option value="Fuel" {% if record.type == 'Fuel' %}selected{% endif %}>Fuel</option>
+    </select>
+    <textarea name="description">{{ record.description }}</textarea>
+    <input type="number" name="quantity" value="{{ record.quantity }}" step="0.01" required>
+    <input type="number" name="cost" value="{{ record.cost }}" step="0.01" required>
+    <input type="date" name="date" value="{{ record.date.strftime('%Y-%m-%d') }}" required>
+    <select name="duty_station_id" required>
+        {% for ds in duty_stations %}
+        <option value="{{ ds.id }}" {% if ds.id == record.duty_station_id %}selected{% endif %}>{{ ds.name }}</option>
+        {% endfor %}
+    </select>
+    <select name="payee_id">
+        <option value="">-- Select Payee --</option>
+        {% for emp in employees %}
+        <option value="{{ emp.id }}" {% if emp.id == record.payee_id %}selected{% endif %}>{{ emp.name }}</option>
+        {% endfor %}
+    </select>
+    <input type="text" name="payee_name" value="{{ record.payee_name }}" placeholder="Or Enter New Payee Name">
+    <button type="submit" class="btn btn-success">Update Record</button>
+</form>
+<a href="{{ url_for('admin_activities.food_fuel') }}" class="btn btn-secondary">Back</a>
+{% endblock %}

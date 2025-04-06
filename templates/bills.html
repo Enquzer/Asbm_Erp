@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Bill Management{% endblock %}
+{% block content %}
+<h1>Bill Management</h1>
+<form method="POST">
+    {{ csrf_token() }}
+    <input type="text" name="bill_number" placeholder="Bill Number" required>
+    <input type="text" name="receipt_number" placeholder="Receipt Number">
+    <select name="bill_type" required>
+        <option value="">Select Bill Type</option>
+        <option value="Electricity">Electricity</option>
+        <option value="Water">Water</option>
+        <option value="Rent">Rent</option>
+        <option value="Parking">Parking</option>
+        <option value="Internet">Internet</option>
+        <option value="Maintenance">Maintenance</option>
+        <option value="Security">Security</option>
+        <option value="Other">Other</option>
+    </select>
+    <input type="text" name="description" placeholder="Description (Required for 'Other')">
+    <input type="number" name="amount" placeholder="Amount" step="0.01" required>
+    <input type="date" name="due_date" required>
+    <select name="duty_station_id" required>
+        <option value="">Select Duty Station</option>
+        {% for ds in duty_stations %}
+        <option value="{{ ds.id }}">{{ ds.name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-success">Add Bill</button>
+</form>
+<table class="table mt-3">
+    <thead>
+        <tr><th>Bill #</th><th>Receipt #</th><th>Type</th><th>Description</th><th>Amount</th><th>Due Date</th><th>Duty Station</th><th>Status</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+        {% for bill in bills %}
+        <tr>
+            <td>{{ bill.bill_number }}</td>
+            <td>{{ bill.receipt_number }}</td>
+            <td>{{ bill.bill_type }}</td>
+            <td>{{ bill.description }}</td>
+            <td>{{ bill.amount }}</td>
+            <td>{{ bill.due_date }}</td>
+            <td>{{ bill.duty_station.name }}</td>
+            <td>{{ bill.status }}</td>
+            <td>
+                <a href="{{ url_for('admin_activities.edit_bill', id=bill.id) }}"><i class="fas fa-edit"></i></a>
+                <a href="{{ url_for('admin_activities.delete_bill', id=bill.id) }}" onclick="return confirm('Are you sure?')"><i class="fas fa-trash"></i></a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('admin_activities.bills_overview') }}" class="btn btn-info">View Bills Overview</a>
+<a href="{{ url_for('admin_activities.export_pdf', section='bills') }}"><i class="fas fa-file-pdf"></i></a>
+<a href="{{ url_for('admin_activities.export_word', section='bills') }}"><i class="fas fa-file-word"></i></a>
+{% endblock %}

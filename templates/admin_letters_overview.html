@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Admin Letters Overview{% endblock %}
+{% block content %}
+<h1>Admin Letters Overview</h1>
+<form method="POST">
+    <input type="date" name="start_date" required>
+    <input type="date" name="end_date" required>
+    <button type="submit" class="btn btn-primary">Filter</button>
+</form>
+<table class="table mt-3">
+    <thead>
+        <tr><th>Duty Station</th><th>Internal Letters</th><th>External Letters</th></tr>
+    </thead>
+    <tbody>
+        {% for ds, counts in overview.items() %}
+        <tr><td>{{ ds }}</td><td>{{ counts['Internal'] }}</td><td>{{ counts['External'] }}</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('admin_activities.admin_letters') }}" class="btn btn-secondary">Back</a>
+{% endblock %}

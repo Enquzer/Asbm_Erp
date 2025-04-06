@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Property Items{% endblock %}
+{% block content %}
+<h1>Property Items</h1>
+<form method="POST">
+    {{ csrf_token() }}
+    <input type="text" name="item_code" placeholder="Item Code" required>
+    <select name="item_type" required>
+        <option value="">Select Item Type</option>
+        <option value="Machine">Machine</option>
+        <option value="IT Equipment">IT Equipment</option>
+        <option value="Furniture">Furniture</option>
+        <option value="Vehicle">Vehicle</option>
+        <option value="Textile Equipment">Textile Equipment</option>
+        <option value="Safety Gear">Safety Gear</option>
+        <option value="Other">Other</option>
+    </select>
+    <input type="text" name="description" placeholder="Description" required>
+    <input type="date" name="assigned_date">
+    <select name="employee_id">
+        <option value="">Select Employee (Optional)</option>
+        {% for employee in employees %}
+        <option value="{{ employee.id }}">{{ employee.name }}</option>
+        {% endfor %}
+    </select>
+    <select name="duty_station_id" required>
+        {% for ds in duty_stations %}
+        <option value="{{ ds.id }}">{{ ds.name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-success">Add Item</button>
+</form>
+<table class="table mt-3">
+    <thead>
+        <tr><th>Item Code</th><th>Type</th><th>Description</th><th>Assigned To</th><th>Assigned Date</th><th>Duty Station</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td>{{ item.item_code }}</td>
+            <td>{{ item.item_type }}</td>
+            <td>{{ item.description }}</td>
+            <td>{{ item.employee.name if item.employee else 'N/A' }}</td>
+            <td>{{ item.assigned_date if item.assigned_date else 'N/A' }}</td>
+            <td>{{ item.duty_station.name }}</td>
+            <td>{{ item.status }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('admin_activities.property_items_overview') }}" class="btn btn-info">View Overview</a>
+<a href="{{ url_for('admin_activities.export_pdf', section='property_items') }}"><i class="fas fa-file-pdf"></i></a>
+<a href="{{ url_for('admin_activities.export_word', section='property_items') }}"><i class="fas fa-file-word"></i></a>
+{% endblock %}

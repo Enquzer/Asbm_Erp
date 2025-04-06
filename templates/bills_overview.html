@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Bills Overview{% endblock %}
+{% block content %}
+<h1>Bills Overview</h1>
+<form method="POST">
+    <input type="date" name="start_date" required>
+    <input type="date" name="end_date" required>
+    <button type="submit" class="btn btn-primary">Filter</button>
+</form>
+<table class="table mt-3">
+    <thead>
+        <tr><th>Duty Station</th><th>Total Bill Amount</th></tr>
+    </thead>
+    <tbody>
+        {% for ds, total in overview.items() %}
+        <tr><td>{{ ds }}</td><td>{{ total }}</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('admin_activities.bills') }}" class="btn btn-secondary">Back to Bills</a>
+{% endblock %}

@@ -1,0 +1,1031 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Activities{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4" style="color: #28a745;">Admin Activities</h2>
+
+    <!-- Tabs Navigation -->
+    <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" id="bills-tab" data-bs-toggle="tab" href="#bills" role="tab" aria-controls="bills" aria-selected="true">Bills</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="food-fuel-tab" data-bs-toggle="tab" href="#food-fuel" role="tab" aria-controls="food-fuel" aria-selected="false">Food & Fuel</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="security-tab" data-bs-toggle="tab" href="#security" role="tab" aria-controls="security" aria-selected="false">Security Incidents</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="petty-cash-tab" data-bs-toggle="tab" href="#petty-cash" role="tab" aria-controls="petty-cash" aria-selected="false">Petty Cash</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="project-funding-tab" data-bs-toggle="tab" href="#project-funding" role="tab" aria-controls="project-funding" aria-selected="false">Project Funding</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="property-items-tab" data-bs-toggle="tab" href="#property-items" role="tab" aria-controls="property-items" aria-selected="false">Property Items</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="admin-letters-tab" data-bs-toggle="tab" href="#admin-letters" role="tab" aria-controls="admin-letters" aria-selected="false">Admin Letters</a>
+        </li>
+    </ul>
+
+    <!-- Tabs Content -->
+    <div class="tab-content" id="adminTabsContent">
+        <!-- Bills Tab -->
+        <div class="tab-pane fade show active" id="bills" role="tabpanel" aria-labelledby="bills-tab">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Bills Management</h4>
+            </div>
+            <!-- Add Bill Form -->
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="section" value="bills">
+                <div class="row mb-3">
+                    <div class="col-md-2"><input type="text" class="form-control" name="bill_number" placeholder="Bill Number" required></div>
+                    <div class="col-md-2"><input type="text" class="form-control" name="receipt_number" placeholder="Receipt Number"></div>
+                    <div class="col-md-2">
+                        <select class="form-control" name="bill_type" required>
+                            <option value="">Select Bill Type</option>
+                            <option value="Electricity">Electricity</option>
+                            <option value="Water">Water</option>
+                            <option value="Rent">Rent</option>
+                            <option value="Parking">Parking</option>
+                            <option value="Internet">Internet</option>
+                            <option value="Maintenance">Maintenance</option>
+                            <option value="Security">Security</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2"><input type="text" class="form-control" name="description" placeholder="Description (for Other)"></div>
+                    <div class="col-md-2"><input type="number" class="form-control" name="amount" placeholder="Amount" step="0.01" required></div>
+                    <div class="col-md-2"><input type="date" class="form-control" name="due_date" required></div>
+                    <div class="col-md-2">
+                        <select class="form-control" name="duty_station_id" required>
+                            <option value="">Select Duty Station</option>
+                            {% for ds in duty_stations %}<option value="{{ ds.id }}">{{ ds.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Add Bill</button>
+            </form>
+            <!-- Filters -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <input type="text" class="form-control" placeholder="Search Bill Number" id="billSearch">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-control">
+                        <option>Status</option>
+                        <option>Pending</option>
+                        <option>Paid</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="date" class="form-control" placeholder="Due Date">
+                </div>
+            </div>
+            <!-- Bills Table -->
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Bill Number</th>
+                        <th>Receipt Number</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Amount</th>
+                        <th>Due Date</th>
+                        <th>Duty Station</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="billsTable">
+                    {% for bill in bills %}
+                    <tr>
+                        <td>{{ bill.bill_number }}</td>
+                        <td>{{ bill.receipt_number }}</td>
+                        <td>{{ bill.bill_type }}</td>
+                        <td>{{ bill.description }}</td>
+                        <td>{{ bill.amount }}</td>
+                        <td>{{ bill.due_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ bill.duty_station.name }}</td>
+                        <td>{{ bill.status }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="editBill({{ bill.id }})"><i class="fas fa-edit"></i></button>
+                            <a href="{{ url_for('admin_activities.delete_bill', id=bill.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this bill?');"><i class="fas fa-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <!-- Bills Overview -->
+            <form method="POST" action="{{ url_for('admin_activities.bills_overview') }}">
+                <input type="date" name="start_date" required> - <input type="date" name="end_date" required>
+                <button type="submit" class="btn btn-info">View Overview</button>
+            </form>
+            <!-- Bills Graph -->
+            <div class="mt-4">
+                <h5>Bills Status Overview</h5>
+                <canvas id="billsChart"></canvas>
+            </div>
+            <!-- Export Buttons -->
+            <div class="mt-3">
+                <a href="{{ url_for('admin_activities.export_pdf', section='bills') }}" class="btn btn-info"><i class="fas fa-file-pdf"></i> Export PDF</a>
+                <a href="{{ url_for('admin_activities.export_word', section='bills') }}" class="btn btn-info"><i class="fas fa-file-word"></i> Export Word</a>
+            </div>
+        </div>
+
+        <!-- Food & Fuel Tab -->
+        <div class="tab-pane fade" id="food-fuel" role="tabpanel" aria-labelledby="food-fuel-tab">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Food & Fuel Management</h4>
+            </div>
+            <!-- Add Food & Fuel Form -->
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="section" value="food_fuel">
+                <div class="row mb-3">
+                    <div class="col-md-2">
+                        <select class="form-control" name="type" required>
+                            <option value="">Select Type</option>
+                            <option value="Food">Food</option>
+                            <option value="Fuel">Fuel</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2"><input type="text" class="form-control" name="description" placeholder="Description" required></div>
+                    <div class="col-md-2"><input type="number" class="form-control" name="quantity" placeholder="Quantity" step="0.01" required></div>
+                    <div class="col-md-2"><input type="number" class="form-control" name="cost" placeholder="Cost" step="0.01" required></div>
+                    <div class="col-md-2"><input type="date" class="form-control" name="date" required></div>
+                    <div class="col-md-2">
+                        <select class="form-control" name="duty_station_id" required>
+                            <option value="">Select Duty Station</option>
+                            {% for ds in duty_stations %}<option value="{{ ds.id }}">{{ ds.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-control" name="payee_id">
+                            <option value="">Select Payee</option>
+                            {% for emp in employees %}<option value="{{ emp.id }}">{{ emp.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2"><input type="text" class="form-control" name="payee_name" placeholder="Or Enter Payee"></div>
+                </div>
+                <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Add Record</button>
+            </form>
+            <!-- Filters -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <select class="form-control">
+                        <option>Type</option>
+                        <option>Food</option>
+                        <option>Fuel</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="date" class="form-control" placeholder="Date">
+                </div>
+            </div>
+            <!-- Food & Fuel Table -->
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Quantity</th>
+                        <th>Cost</th>
+                        <th>Date</th>
+                        <th>Payee</th>
+                        <th>Duty Station</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="foodFuelTable">
+                    {% for record in food_fuel_records %}
+                    <tr>
+                        <td>{{ record.type }}</td>
+                        <td>{{ record.description }}</td>
+                        <td>{{ record.quantity }}</td>
+                        <td>{{ record.cost }}</td>
+                        <td>{{ record.date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ record.payee.name if record.payee else record.payee_name }}</td>
+                        <td>{{ record.duty_station.name if record.duty_station else 'N/A' }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="editFoodFuel({{ record.id }})"><i class="fas fa-edit"></i></button>
+                            <a href="{{ url_for('admin_activities.delete_food_fuel', id=record.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this record?');"><i class="fas fa-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <!-- Food & Fuel Graph -->
+            <div class="mt-4">
+                <h5>Food & Fuel Cost Trends</h5>
+                <canvas id="foodFuelChart"></canvas>
+            </div>
+            <!-- Export Buttons -->
+            <div class="mt-3">
+                <a href="{{ url_for('admin_activities.export_pdf', section='food_fuel') }}" class="btn btn-info"><i class="fas fa-file-pdf"></i> Export PDF</a>
+                <a href="{{ url_for('admin_activities.export_word', section='food_fuel') }}" class="btn btn-info"><i class="fas fa-file-word"></i> Export Word</a>
+            </div>
+        </div>
+
+        <!-- Security Incidents Tab -->
+        <div class="tab-pane fade" id="security" role="tabpanel" aria-labelledby="security-tab">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Security Incidents</h4>
+            </div>
+            <!-- Add Security Incident Form -->
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="section" value="security">
+                <div class="row mb-3">
+                    <div class="col-md-2">
+                        <select class="form-control" name="incident_type" required>
+                            <option value="">Select Incident Type</option>
+                            <option value="Theft">Theft</option>
+                            <option value="Fire">Fire</option>
+                            <option value="Operator Accident">Operator Accident</option>
+                            <option value="Car Accident">Car Accident</option>
+                            <option value="Machinery Malfunction">Machinery Malfunction</option>
+                            <option value="Chemical Spill">Chemical Spill</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2"><input type="text" class="form-control" name="description" placeholder="Description" required></div>
+                    <div class="col-md-2"><input type="text" class="form-control" name="location" placeholder="Location" required></div>
+                    <div class="col-md-2"><input type="date" class="form-control" name="reported_date" required></div>
+                    <div class="col-md-2">
+                        <select class="form-control" name="duty_station_id" required>
+                            <option value="">Select Duty Station</option>
+                            {% for ds in duty_stations %}<option value="{{ ds.id }}">{{ ds.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Add Incident</button>
+            </form>
+            <!-- Filters -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <input type="text" class="form-control" placeholder="Search Location" id="securitySearch">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-control">
+                        <option>Status</option>
+                        <option>Open</option>
+                        <option>Resolved</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="date" class="form-control" placeholder="Reported Date">
+                </div>
+            </div>
+            <!-- Security Incidents Table -->
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Location</th>
+                        <th>Reported Date</th>
+                        <th>Status</th>
+                        <th>Resolved Date</th>
+                        <th>Duty Station</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="securityTable">
+                    {% for incident in security_incidents %}
+                    <tr>
+                        <td>{{ incident.incident_type }}</td>
+                        <td>{{ incident.description }}</td>
+                        <td>{{ incident.location }}</td>
+                        <td>{{ incident.reported_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ incident.status }}</td>
+                        <td>{{ incident.resolved_date.strftime('%Y-%m-%d') if incident.resolved_date else 'N/A' }}</td>
+                        <td>{{ incident.duty_station.name if incident.duty_station else 'N/A' }}</td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
+                            <a href="#" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this incident?');"><i class="fas fa-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <!-- Security Incidents Graph -->
+            <div class="mt-4">
+                <h5>Security Incidents Over Time</h5>
+                <canvas id="securityChart"></canvas>
+            </div>
+            <!-- Export Buttons -->
+            <div class="mt-3">
+                <a href="{{ url_for('admin_activities.export_pdf', section='security') }}" class="btn btn-info"><i class="fas fa-file-pdf"></i> Export PDF</a>
+                <a href="{{ url_for('admin_activities.export_word', section='security') }}" class="btn btn-info"><i class="fas fa-file-word"></i> Export Word</a>
+            </div>
+        </div>
+
+        <!-- Petty Cash Tab -->
+        <div class="tab-pane fade" id="petty-cash" role="tabpanel" aria-labelledby="petty-cash-tab">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Petty Cash Management</h4>
+            </div>
+            <!-- Add Petty Cash Form -->
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="section" value="petty_cash">
+                <div class="row mb-3">
+                    <div class="col-md-2">
+                        <select class="form-control" name="employee_id" required>
+                            <option value="">Select Employee</option>
+                            {% for emp in employees %}<option value="{{ emp.id }}">{{ emp.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2"><input type="text" class="form-control" name="description" placeholder="Description" required></div>
+                    <div class="col-md-2"><input type="number" class="form-control" name="amount" placeholder="Amount" step="0.01" required></div>
+                    <div class="col-md-2"><input type="date" class="form-control" name="request_date" required></div>
+                    <div class="col-md-2"><input type="text" class="form-control" name="reason" placeholder="Reason" required></div>
+                    <div class="col-md-2">
+                        <select class="form-control" name="duty_station_id" required>
+                            <option value="">Select Duty Station</option>
+                            {% for ds in duty_stations %}<option value="{{ ds.id }}">{{ ds.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Add Request</button>
+            </form>
+            <!-- Filters -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <input type="text" class="form-control" placeholder="Search Description" id="pettyCashSearch">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-control">
+                        <option>Status</option>
+                        <option>Pending</option>
+                        <option>Approved</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="date" class="form-control" placeholder="Request Date">
+                </div>
+            </div>
+            <!-- Petty Cash Table -->
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>Amount</th>
+                        <th>Reason</th>
+                        <th>Request Date</th>
+ Bertram                     <th>Status</th>
+                        <th>Duty Station</th>
+                        <th>Approver</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="pettyCashTable">
+                    {% for request in petty_cash_requests %}
+                    <tr>
+                        <td>{{ request.employee.name if request.employee else 'N/A' }}</td>
+                        <td>{{ request.employee_title if request.employee_title else 'N/A' }}</td>
+                        <td>{{ request.description }}</td>
+                        <td>{{ request.amount }}</td>
+                        <td>{{ request.reason }}</td>
+                        <td>{{ request.request_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ request.status }}</td>
+                        <td>{{ request.duty_station.name if request.duty_station else 'N/A' }}</td>
+                        <td>{{ request.approver.username if request.approver else 'N/A' }}</td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
+                            <a href="#" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this request?');"><i class="fas fa-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <!-- Petty Cash Overview -->
+            <form method="POST" action="{{ url_for('admin_activities.petty_cash_overview') }}">
+                <input type="date" name="start_date" required> - <input type="date" name="end_date" required>
+                <button type="submit" class="btn btn-info">View Overview</button>
+            </form>
+            <!-- Petty Cash Graph -->
+            <div class="mt-4">
+                <h5>Petty Cash Requests Over Time</h5>
+                <canvas id="pettyCashChart"></canvas>
+            </div>
+            <!-- Export Buttons -->
+            <div class="mt-3">
+                <a href="{{ url_for('admin_activities.export_pdf', section='petty_cash') }}" class="btn btn-info"><i class="fas fa-file-pdf"></i> Export PDF</a>
+                <a href="{{ url_for('admin_activities.export_word', section='petty_cash') }}" class="btn btn-info"><i class="fas fa-file-word"></i> Export Word</a>
+            </div>
+        </div>
+
+        <!-- Project Funding Tab -->
+        <div class="tab-pane fade" id="project-funding" role="tabpanel" aria-labelledby="project-funding-tab">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Project Funding</h4>
+            </div>
+            <!-- Add Project Funding Form -->
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="section" value="project_funding">
+                <div class="row mb-3">
+                    <div class="col-md-2">
+                        <select class="form-control" name="project_id">
+                            <option value="">Select Project</option>
+                            {% for project in projects %}<option value="{{ project.id }}">{{ project.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2"><input type="text" class="form-control" name="new_project_name" placeholder="Or New Project"></div>
+                    <div class="col-md-2"><input type="number" class="form-control" name="amount" placeholder="Amount" step="0.01" required></div>
+                    <div class="col-md-2"><input type="date" class="form-control" name="funding_date" required></div>
+                    <div class="col-md-2"><input type="date" class="form-control" name="start_date" placeholder="Start Date"></div>
+                    <div class="col-md-2"><input type="date" class="form-control" name="end_date" placeholder="End Date"></div>
+                    <div class="col-md-2"><input type="text" class="form-control" name="source" placeholder="Source" required></div>
+                    <div class="col-md-2">
+                        <select class="form-control" name="duty_station_id" required>
+                            <option value="">Select Duty Station</option>
+                            {% for ds in duty_stations %}<option value="{{ ds.id }}">{{ ds.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Add Funding</button>
+            </form>
+            <!-- Filters -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <input type="text" class="form-control" placeholder="Search Project" id="projectFundingSearch">
+                </div>
+                <div class="col-md-3">
+                    <input type="date" class="form-control" placeholder="Funding Date">
+                </div>
+            </div>
+            <!-- Project Funding Table -->
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Project</th>
+                        <th>Amount</th>
+                        <th>Funding Date</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Source</th>
+                        <th>Duty Station</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="projectFundingTable">
+                    {% for funding in project_funding %}
+                    <tr>
+                        <td>{{ funding.project.name if funding.project else 'N/A' }}</td>
+                        <td>{{ funding.amount }}</td>
+                        <td>{{ funding.funding_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ funding.start_date.strftime('%Y-%m-%d') if funding.start_date else 'N/A' }}</td>
+                        <td>{{ funding.end_date.strftime('%Y-%m-%d') if funding.end_date else 'N/A' }}</td>
+                        <td>{{ funding.source }}</td>
+                        <td>{{ funding.duty_station.name if funding.duty_station else 'N/A' }}</td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
+                            <a href="#" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this funding?');"><i class="fas fa-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <!-- Project Funding Overview -->
+            <form method="POST" action="{{ url_for('admin_activities.project_funding_overview') }}">
+                <input type="date" name="start_date" required> - <input type="date" name="end_date" required>
+                <button type="submit" class="btn btn-info">View Overview</button>
+            </form>
+            <!-- Project Funding Graph -->
+            <div class="mt-4">
+                <h5>Project Funding Trends</h5>
+                <canvas id="projectFundingChart"></canvas>
+            </div>
+            <!-- Export Buttons -->
+            <div class="mt-3">
+                <a href="{{ url_for('admin_activities.export_pdf', section='project_funding') }}" class="btn btn-info"><i class="fas fa-file-pdf"></i> Export PDF</a>
+                <a href="{{ url_for('admin_activities.export_word', section='project_funding') }}" class="btn btn-info"><i class="fas fa-file-word"></i> Export Word</a>
+                <a href="{{ url_for('admin_activities.export_excel', section='project_funding') }}" class="btn btn-info"><i class="fas fa-file-excel"></i> Export Excel</a>
+            </div>
+        </div>
+
+        <!-- Property Items Tab -->
+        <div class="tab-pane fade" id="property-items" role="tabpanel" aria-labelledby="property-items-tab">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Property Items</h4>
+            </div>
+            <!-- Add Property Item Form -->
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="section" value="property_items">
+                <div class="row mb-3">
+                    <div class="col-md-2"><input type="text" class="form-control" name="item_code" placeholder="Item Code" required></div>
+                    <div class="col-md-2">
+                        <select class="form-control" name="item_type" required>
+                            <option value="">Select Item Type</option>
+                            <option value="Machine">Machine</option>
+                            <option value="IT Equipment">IT Equipment</option>
+                            <option value="Furniture">Furniture</option>
+                            <option value="Vehicle">Vehicle</option>
+                            <option value="Textile Equipment">Textile Equipment</option>
+                            <option value="Safety Gear">Safety Gear</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2"><input type="text" class="form-control" name="description" placeholder="Description" required></div>
+                    <div class="col-md-2"><input type="date" class="form-control" name="assigned_date"></div>
+                    <div class="col-md-2">
+                        <select class="form-control" name="employee_id">
+                            <option value="">Select Employee (Optional)</option>
+                            {% for emp in employees %}<option value="{{ emp.id }}">{{ emp.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-control" name="duty_station_id" required>
+                            <option value="">Select Duty Station</option>
+                            {% for ds in duty_stations %}<option value="{{ ds.id }}">{{ ds.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Add Item</button>
+            </form>
+            <!-- Filters -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <input type="text" class="form-control" placeholder="Search Item Code" id="propertyItemSearch">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-control">
+                        <option>Status</option>
+                        <option>In Use</option>
+                        <option>Returned</option>
+                    </select>
+                </div>
+            </div>
+            <!-- Property Items Table -->
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Item Code</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Assigned To</th>
+                        <th>Assigned Date</th>
+                        <th>Status</th>
+                        <th>Duty Station</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="propertyItemsTable">
+                    {% for item in property_items %}
+                    <tr>
+                        <td>{{ item.item_code }}</td>
+                        <td>{{ item.item_type }}</td>
+                        <td>{{ item.description }}</td>
+                        <td>{{ item.employee.name if item.employee else item.assigned_to }}</td>
+                        <td>{{ item.assigned_date.strftime('%Y-%m-%d') if item.assigned_date else 'N/A' }}</td>
+                        <td>{{ item.status }}</td>
+                        <td>{{ item.duty_station.name if item.duty_station else 'N/A' }}</td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
+                            <a href="#" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this item?');"><i class="fas fa-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <!-- Property Items Overview -->
+            <form method="POST" action="{{ url_for('admin_activities.property_items_overview') }}">
+                <button type="submit" class="btn btn-info">View Overview</button>
+            </form>
+            <!-- Property Items Graph -->
+            <div class="mt-4">
+                <h5>Property Items Status</h5>
+                <canvas id="propertyItemsChart"></canvas>
+            </div>
+            <!-- Export Buttons -->
+            <div class="mt-3">
+                <a href="{{ url_for('admin_activities.export_pdf', section='property_items') }}" class="btn btn-info"><i class="fas fa-file-pdf"></i> Export PDF</a>
+                <a href="{{ url_for('admin_activities.export_word', section='property_items') }}" class="btn btn-info"><i class="fas fa-file-word"></i> Export Word</a>
+            </div>
+        </div>
+
+        <!-- Admin Letters Tab -->
+        <div class="tab-pane fade" id="admin-letters" role="tabpanel" aria-labelledby="admin-letters-tab">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Admin Letters</h4>
+            </div>
+            <!-- Add Admin Letter Form -->
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="section" value="admin_letters">
+                <div class="row mb-3">
+                    <div class="col-md-2">
+                        <select class="form-control" name="letter_type" required>
+                            <option value="">Select Type</option>
+                            <option value="Internal">Internal</option>
+                            <option value="External">External</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2"><input type="text" class="form-control" name="recipient" placeholder="Recipient" required></div>
+                    <div class="col-md-2"><input type="text" class="form-control" name="subject" placeholder="Subject" required></div>
+                    <div class="col-md-2"><textarea class="form-control" name="content" placeholder="Content" required></textarea></div>
+                    <div class="col-md-2">
+                        <select class="form-control" name="duty_station_id" required>
+                            <option value="">Select Duty Station</option>
+                            {% for ds in duty_stations %}<option value="{{ ds.id }}">{{ ds.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Add Letter</button>
+            </form>
+            <!-- Filters -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <input type="text" class="form-control" placeholder="Search Recipient" id="adminLettersSearch">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-control">
+                        <option>Letter Type</option>
+                        <option>Internal</option>
+                        <option>External</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="date" class="form-control" placeholder="Created Date">
+                </div>
+            </div>
+            <!-- Admin Letters Table -->
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Letter Type</th>
+                        <th>Recipient</th>
+                        <th>Subject</th>
+                        <th>Created Date</th>
+                        <th>Duty Station</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="adminLettersTable">
+                    {% for letter in admin_letters %}
+                    <tr>
+                        <td>{{ letter.letter_type }}</td>
+                        <td>{{ letter.recipient }}</td>
+                        <td>{{ letter.subject }}</td>
+                        <td>{{ letter.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ letter.duty_station.name if letter.duty_station else 'N/A' }}</td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
+                            <a href="#" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this letter?');"><i class="fas fa-trash"></i></a>
+                            <a href="#" class="btn btn-sm btn-info"><i class="fas fa-download"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <!-- Admin Letters Overview -->
+            <form method="POST" action="{{ url_for('admin_activities.admin_letters_overview') }}">
+                <input type="date" name="start_date" required> - <input type="date" name="end_date" required>
+                <button type="submit" class="btn btn-info">View Overview</button>
+            </form>
+            <!-- Admin Letters Graph -->
+            <div class="mt-4">
+                <h5>Letters Sent Over Time</h5>
+                <canvas id="adminLettersChart"></canvas>
+            </div>
+            <!-- Export Buttons -->
+            <div class="mt-3">
+                <a href="{{ url_for('admin_activities.export_pdf', section='admin_letters') }}" class="btn btn-info"><i class="fas fa-file-pdf"></i> Export PDF</a>
+                <a href="{{ url_for('admin_activities.export_word', section='admin_letters') }}" class="btn btn-info"><i class="fas fa-file-word"></i> Export Word</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Chart.js for Graphs -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+<script>
+// Edit Functions (placeholders)
+function editBill(id) {}
+function editFoodFuel(id) {}
+
+// Bills Chart (Bar Chart)
+const billsCtx = document.getElementById('billsChart').getContext('2d');
+const billsChart = new Chart(billsCtx, {
+    type: 'bar',
+    data: {
+        labels: ['Pending', 'Paid'],
+        datasets: [{
+            label: 'Number of Bills',
+            data: [
+                {{ bills | selectattr('status', 'equalto', 'Pending') | list | length }},
+                {{ bills | selectattr('status', 'equalto', 'Paid') | list | length }}
+            ],
+            backgroundColor: ['#ff6384', '#36a2eb'],
+            borderColor: ['#ff6384', '#36a2eb'],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            datalabels: {
+                anchor: 'end',
+                align: 'top',
+                color: '#000',
+                font: {
+                    weight: 'bold'
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Number of Bills'
+                }
+            }
+        }
+    }
+});
+
+// Food & Fuel Chart (Line Chart)
+const foodFuelCtx = document.getElementById('foodFuelChart').getContext('2d');
+const foodFuelChart = new Chart(foodFuelCtx, {
+    type: 'line',
+    data: {
+        labels: [
+            {% for record in food_fuel_records %}
+                '{{ record.date.strftime('%Y-%m-%d') }}',
+            {% endfor %}
+        ],
+        datasets: [{
+            label: 'Food Costs',
+            data: [
+                {% for record in food_fuel_records %}
+                    {% if record.type == 'Food' %}
+                        {{ record.cost }},
+                    {% else %}
+                        0,
+                    {% endif %}
+                {% endfor %}
+            ],
+            borderColor: '#ff6384',
+            fill: false
+        }, {
+            label: 'Fuel Costs',
+            data: [
+                {% for record in food_fuel_records %}
+                    {% if record.type == 'Fuel' %}
+                        {{ record.cost }},
+                    {% else %}
+                        0,
+                    {% endif %}
+                {% endfor %}
+            ],
+            borderColor: '#36a2eb',
+            fill: false
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            datalabels: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Cost'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Date'
+                }
+            }
+        }
+    }
+});
+
+// Security Incidents Chart (Line Chart)
+const securityCtx = document.getElementById('securityChart').getContext('2d');
+const securityChart = new Chart(securityCtx, {
+    type: 'line',
+    data: {
+        labels: [
+            {% for incident in security_incidents %}
+                '{{ incident.reported_date.strftime('%Y-%m-%d') }}',
+            {% endfor %}
+        ],
+        datasets: [{
+            label: 'Incidents',
+            data: [
+                {% for incident in security_incidents %}
+                    1,
+                {% endfor %}
+            ],
+            borderColor: '#ff9f40',
+            fill: false
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            datalabels: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Number of Incidents'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Date'
+                }
+            }
+        }
+    }
+});
+
+// Petty Cash Chart (Bar Chart)
+const pettyCashCtx = document.getElementById('pettyCashChart').getContext('2d');
+const pettyCashChart = new Chart(pettyCashCtx, {
+    type: 'bar',
+    data: {
+        labels: ['Pending', 'Approved'],
+        datasets: [{
+            label: 'Number of Requests',
+            data: [
+                {{ petty_cash_requests | selectattr('status', 'equalto', 'Pending') | list | length }},
+                {{ petty_cash_requests | selectattr('status', 'equalto', 'Approved') | list | length }}
+            ],
+            backgroundColor: ['#ff6384', '#36a2eb'],
+            borderColor: ['#ff6384', '#36a2eb'],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            datalabels: {
+                anchor: 'end',
+                align: 'top',
+                color: '#000',
+                font: {
+                    weight: 'bold'
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Number of Requests'
+                }
+            }
+        }
+    }
+});
+
+// Project Funding Chart (Line Chart)
+const projectFundingCtx = document.getElementById('projectFundingChart').getContext('2d');
+const projectFundingChart = new Chart(projectFundingCtx, {
+    type: 'line',
+    data: {
+        labels: [
+            {% for funding in project_funding %}
+                '{{ funding.funding_date.strftime('%Y-%m-%d') }}',
+            {% endfor %}
+        ],
+        datasets: [{
+            label: 'Funding Amount',
+            data: [
+                {% for funding in project_funding %}
+                    {{ funding.amount }},
+                {% endfor %}
+            ],
+            borderColor: '#4bc0c0',
+            fill: false
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            datalabels: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Amount'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Date'
+                }
+            }
+        }
+    }
+});
+
+// Property Items Chart (Doughnut Chart)
+const propertyItemsCtx = document.getElementById('propertyItemsChart').getContext('2d');
+const propertyItemsChart = new Chart(propertyItemsCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['In Use', 'Returned'],
+        datasets: [{
+            label: 'Property Items',
+            data: [
+                {{ property_items | selectattr('status', 'equalto', 'In Use') | list | length }},
+                {{ property_items | selectattr('status', 'equalto', 'Returned') | list | length }}
+            ],
+            backgroundColor: ['#ff6384', '#36a2eb'],
+            borderColor: ['#fff', '#fff'],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            datalabels: {
+                color: '#fff',
+                font: {
+                    weight: 'bold'
+                }
+            }
+        }
+    }
+});
+
+// Admin Letters Chart (Line Chart)
+const adminLettersCtx = document.getElementById('adminLettersChart').getContext('2d');
+const adminLettersChart = new Chart(adminLettersCtx, {
+    type: 'line',
+    data: {
+        labels: [
+            {% for letter in admin_letters %}
+                '{{ letter.created_at.strftime('%Y-%m-%d') }}',
+            {% endfor %}
+        ],
+        datasets: [{
+            label: 'Letters Sent',
+            data: [
+                {% for letter in admin_letters %}
+                    1,
+                {% endfor %}
+            ],
+            borderColor: '#ffcd56',
+            fill: false
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            datalabels: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Number of Letters'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Date'
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Project Funding Overview{% endblock %}
+{% block content %}
+<h1>Project Funding Overview</h1>
+<form method="POST">
+    <input type="date" name="start_date" required>
+    <input type="date" name="end_date" required>
+    <button type="submit" class="btn btn-primary">Filter</button>
+</form>
+<table class="table mt-3">
+    <thead>
+        <tr><th>Duty Station</th><th>Project</th><th>Total Funding</th></tr>
+    </thead>
+    <tbody>
+        {% for ds, projects in overview.items() %}
+        {% for project, total in projects.items() %}
+        <tr><td>{{ ds }}</td><td>{{ project }}</td><td>{{ total }}</td></tr>
+        {% endfor %}
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('admin_activities.project_funding') }}" class="btn btn-secondary">Back</a>
+{% endblock %}

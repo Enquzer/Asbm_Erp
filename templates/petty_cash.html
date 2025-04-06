@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Petty Cash Management{% endblock %}
+{% block content %}
+<h1>Petty Cash Management</h1>
+<form method="POST">
+    {{ csrf_token() }}
+    <input type="text" name="description" placeholder="Description" required>
+    <input type="number" name="amount" placeholder="Amount" step="0.01" required>
+    <input type="date" name="request_date" required>
+    <select name="employee_id" required>
+        {% for emp in employees %}
+        <option value="{{ emp.id }}">{{ emp.name }}</option>
+        {% endfor %}
+    </select>
+    <input type="text" name="reason" placeholder="Reason" required>
+    <select name="duty_station_id" required>
+        {% for ds in duty_stations %}
+        <option value="{{ ds.id }}">{{ ds.name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-success">Add Request</button>
+</form>
+<table class="table mt-3">
+    <thead>
+        <tr><th>Description</th><th>Amount</th><th>Request Date</th><th>Employee</th><th>Status</th><th>Approver</th></tr>
+    </thead>
+    <tbody>
+        {% for request in requests %}
+        <tr>
+            <td>{{ request.description }}</td>
+            <td>{{ request.amount }}</td>
+            <td>{{ request.request_date }}</td>
+            <td>{{ request.employee.name }}</td>
+            <td>{{ request.status }}</td>
+            <td>{{ request.approver_name if request.approver else 'Pending' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('admin_activities.petty_cash_overview') }}" class="btn btn-info">View Overview</a>
+<a href="{{ url_for('admin_activities.export_pdf', section='petty_cash') }}"><i class="fas fa-file-pdf"></i></a>
+<a href="{{ url_for('admin_activities.export_word', section='petty_cash') }}"><i class="fas fa-file-word"></i></a>
+{% endblock %}

@@ -1,3 +1,4 @@
+<!-- templates/manage_users.html -->
 {% extends 'base.html' %}
 {% block title %}Manage Users - ASBM ERP{% endblock %}
 {% block content %}
@@ -33,21 +34,37 @@
                 <td>
                     <form method="POST" action="{{ url_for('user_management.manage_users') }}">
                         <input type="hidden" name="user_id" value="{{ user.id }}">
-                        {% for module in ['dashboard', 'orders', 'products', 'hr', 'notifications', 
-                                        'planning', 'production', 'project', 'purchasing', 
-                                        'stock_management', 'sales', 'system_setup', 'user_management', 'chat'] %}
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="permission_{{ module }}_{{ user.id }}" 
-                                       id="permission_{{ module }}_{{ user.id }}" 
-                                       {% if user.permissions.get(module, False) %}checked{% endif %}>
-                                <label class="form-check-label" for="permission_{{ module }}_{{ user.id }}">{{ module.replace('_', ' ').title() }}</label>
+                        <input type="hidden" name="action" value="update_permissions">
+                        {% for module in modules %}
+                            <div class="form-check form-check-inline">
+                                <input type="checkbox" class="form-check-input" name="{{ module }}_view" 
+                                       id="{{ module }}_view_{{ user.id }}" 
+                                       {% if user.permissions.get(module, {}).get('view', False) %}checked{% endif %}>
+                                <label class="form-check-label" for="{{ module }}_view_{{ user.id }}">{{ module.replace('_', ' ').title() }} (V)</label>
                             </div>
+                            <div class="form-check form-check-inline">
+                                <input type="checkbox" class="form-check-input" name="{{ module }}_edit" 
+                                       id="{{ module }}_edit_{{ user.id }}" 
+                                       {% if user.permissions.get(module, {}).get('edit', False) %}checked{% endif %}>
+                                <label class="form-check-label" for="{{ module }}_edit_{{ user.id }}">(E)</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input type="checkbox" class="form-check-input" name="{{ module }}_delete" 
+                                       id="{{ module }}_delete_{{ user.id }}" 
+                                       {% if user.permissions.get(module, {}).get('delete', False) %}checked{% endif %}>
+                                <label class="form-check-label" for="{{ module }}_delete_{{ user.id }}">(D)</label>
+                            </div>
+                            <br>
                         {% endfor %}
                         <button type="submit" class="btn btn-primary mt-2">Save Permissions</button>
                     </form>
                 </td>
                 <td>
-                    <a href="{{ url_for('user_management.view_password', user_id=user.id) }}" class="btn btn-info btn-sm">View Password</a>
+                    <form method="POST" action="{{ url_for('user_management.manage_users') }}" onsubmit="return confirm('Are you sure you want to delete this user?');">
+                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                        <input type="hidden" name="action" value="delete">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
                 </td>
             </tr>
             {% endfor %}

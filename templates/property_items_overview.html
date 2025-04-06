@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Property Items Overview{% endblock %}
+{% block content %}
+<h1>Property Items Overview</h1>
+<table class="table mt-3">
+    <thead>
+        <tr><th>Duty Station</th><th>Item Type</th><th>Count</th></tr>
+    </thead>
+    <tbody>
+        {% for ds, types in overview.items() %}
+        {% for type, count in types.items() %}
+        <tr><td>{{ ds }}</td><td>{{ type }}</td><td>{{ count }}</td></tr>
+        {% endfor %}
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('admin_activities.property_items') }}" class="btn btn-secondary">Back</a>
+{% endblock %}

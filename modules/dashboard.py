@@ -1,14 +1,12 @@
 from flask import Blueprint, render_template, jsonify
 from flask_login import login_required
 from database import db
-from modules.models import Customer, Order, ProductionPlan, ProductionActual, RevenuePlan, RevenueActual, DutyStation, Employee, Product, Sale
-from datetime import datetime
+from modules.models import Customer, Order, ProductionPlan, ProductionActual, RevenuePlan, RevenueActual, DutyStation, Employee, Product, Sale, Overtime, Attendance, AnnualLeave
+from datetime import datetime, date
 import logging
 
-# Define the Blueprint first
 dashboard_bp = Blueprint('dashboard', __name__)
 
-# Logging setup
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -59,6 +57,13 @@ def dashboard():
 
         duty_station_counts = dict(db.session.query(DutyStation.name, db.func.count(Employee.id)).join(Employee).group_by(DutyStation.name).all())
 
+        hr_summary = {
+            'total_employees': Employee.query.count(),
+            'total_ot_hours': sum(ot.hours for ot in Overtime.query.all()),
+            'attendance_today': Attendance.query.filter_by(date=date.today()).count(),
+            'leave_pending': AnnualLeave.query.filter_by(status='Pending').count()
+        }
+
         logger.info("Dashboard data loaded successfully")
         return render_template('dashboard.html',
                                num_customers=num_customers,
@@ -76,12 +81,12 @@ def dashboard():
                                last_year_revenue=last_year_revenue,
                                revenue_year_diff=revenue_year_diff,
                                top_product=top_product,
-                               duty_station_counts=duty_station_counts)
+                               duty_station_counts=duty_station_counts,
+                               hr_summary=hr_summary)
     except Exception as e:
         logger.error(f"Error in dashboard route: {str(e)}")
         return render_template('error.html', error=str(e)), 500
 
-# AJAX endpoint for dynamic updates
 @dashboard_bp.route('/dashboard_data', methods=['GET'])
 @login_required
 def dashboard_data():
@@ -124,6 +129,13 @@ def dashboard_data():
 
         duty_station_counts = dict(db.session.query(DutyStation.name, db.func.count(Employee.id)).join(Employee).group_by(DutyStation.name).all())
 
+        hr_summary = {
+            'total_employees': Employee.query.count(),
+            'total_ot_hours': sum(ot.hours for ot in Overtime.query.all()),
+            'attendance_today': Attendance.query.filter_by(date=date.today()).count(),
+            'leave_pending': AnnualLeave.query.filter_by(status='Pending').count()
+        }
+
         data = {
             'num_customers': num_customers,
             'num_orders': num_orders,
@@ -136,7 +148,8 @@ def dashboard_data():
             'current_year_revenue': current_year_revenue,
             'last_year_revenue': last_year_revenue,
             'top_product': top_product_data,
-            'duty_station_counts': duty_station_counts
+            'duty_station_counts': duty_station_counts,
+            'hr_summary': hr_summary
         }
         return jsonify(data)
     except Exception as e:

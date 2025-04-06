@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Security Incidents{% endblock %}
+{% block content %}
+<h1>Security Incidents</h1>
+<form method="POST">
+    {{ csrf_token() }}
+    <select name="incident_type" required>
+        <option value="">Select Incident Type</option>
+        <option value="Theft">Theft</option>
+        <option value="Fire">Fire</option>
+        <option value="Operator Accident">Operator Accident</option>
+        <option value="Car Accident">Car Accident</option>
+        <option value="Machinery Malfunction">Machinery Malfunction</option>
+        <option value="Chemical Spill">Chemical Spill</option>
+        <option value="Other">Other</option>
+    </select>
+    <input type="text" name="description" placeholder="Description" required>
+    <input type="text" name="location" placeholder="Location" required>
+    <input type="date" name="reported_date" required>
+    <select name="duty_station_id" required>
+        {% for ds in duty_stations %}
+        <option value="{{ ds.id }}">{{ ds.name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-success">Add Incident</button>
+</form>
+<table class="table mt-3">
+    <thead>
+        <tr><th>Type</th><th>Description</th><th>Location</th><th>Reported Date</th><th>Duty Station</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+        {% for incident in incidents %}
+        <tr>
+            <td>{{ incident.incident_type }}</td>
+            <td>{{ incident.description }}</td>
+            <td>{{ incident.location }}</td>
+            <td>{{ incident.reported_date }}</td>
+            <td>{{ incident.duty_station.name }}</td>
+            <td>{{ incident.status }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('admin_activities.export_pdf', section='security') }}"><i class="fas fa-file-pdf"></i></a>
+<a href="{{ url_for('admin_activities.export_word', section='security') }}"><i class="fas fa-file-word"></i></a>
+{% endblock %}

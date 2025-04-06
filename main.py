@@ -1,15 +1,23 @@
+# main.py
 import os
 import time
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import logging
 from PIL import Image
 
-from flask import Flask, render_template, redirect, url_for, send_file
+import matplotlib
+matplotlib.use('Agg')
+from flask import Flask, render_template, redirect, url_for, send_file, jsonify
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 from flask_migrate import Migrate
 from database import db
 from modules.stock_models import StockCategory, StockItem, StockTransaction, StockBalance
+from modules.hr import generate_pdf
+from modules.models import User, DutyStation, Product, PurchaseOrder, Customer, Order, Sale, Employee, Overtime, Attendance, AnnualLeave, EmploymentLetter, Contract, Position, Project, Resource
+from modules.purchasing_models import PurchaseRequest, ProcurementOrder, Supplier, YearlyPurchasePlan
+from modules.production_models import Machine, ProductionConfig, ProductionRecord
+from modules.admin_activities import admin_activities_bp
 
 try:
     import pandas as pd
@@ -36,9 +44,11 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 }
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'images', 'uploads')
 app.config['PRODUCT_UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'images', 'products')
+app.config['LETTER_UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads', 'letters')
+app.config['CONTRACT_UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads', 'contracts')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-for folder in [app.config['UPLOAD_FOLDER'], app.config['PRODUCT_UPLOAD_FOLDER']]:
+for folder in [app.config['UPLOAD_FOLDER'], app.config['PRODUCT_UPLOAD_FOLDER'], app.config['LETTER_UPLOAD_FOLDER'], app.config['CONTRACT_UPLOAD_FOLDER']]:
     if not os.path.exists(folder):
         os.makedirs(folder)
 
@@ -84,6 +94,7 @@ def import_blueprints():
         from modules.system_setup import system_setup_bp
         from modules.user_management import user_management_bp
         from modules.chat import chat_bp
+        from modules.resources import resources_bp
         return [
             (dashboard_bp, '/dashboard'),
             (order_bp, '/order'),
@@ -98,7 +109,8 @@ def import_blueprints():
             (sales_bp, '/sales'),
             (system_setup_bp, '/system_setup'),
             (user_management_bp, '/user_management'),
-            (chat_bp, '/chat')
+            (chat_bp, '/chat'),
+            (resources_bp, '/resources')
         ]
     except ImportError as e:
         logger.error(f"Blueprint import failed: {str(e)}")
@@ -108,6 +120,7 @@ def register_blueprints():
     blueprints = import_blueprints()
     for bp, url_prefix in blueprints:
         app.register_blueprint(bp, url_prefix=url_prefix)
+    app.register_blueprint(admin_activities_bp)
 
 @app.route('/')
 def index():
@@ -115,7 +128,6 @@ def index():
 
 @login_manager.user_loader
 def load_user(user_id):
-    from modules.models import User
     return db.session.get(User, int(user_id))
 
 @app.errorhandler(404)
@@ -150,12 +162,25 @@ def date_filter(value, format='%Y-%m-%d'):
 app.jinja_env.filters['format_currency'] = format_currency_filter
 app.jinja_env.filters['date'] = date_filter
 
+from flask.json.provider import DefaultJSONProvider
+
+class CustomJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        try:
+            return super().default(obj)
+        except TypeError as e:
+            logger.error(f"Serialization error for object {obj}: {str(e)}")
+            raise
+
+app.json_provider_class = CustomJSONProvider
+
 def init_db():
     with app.app_context():
         max_retries = 5
         retry_delay = 2
         for attempt in range(max_retries):
             try:
+                db.drop_all()
                 db.create_all()
                 logger.info("Database tables ensured successfully")
                 break
@@ -169,10 +194,6 @@ def init_db():
         else:
             logger.error("Failed to initialize database after all retries due to persistent lock.")
             raise RuntimeError("Database initialization failed due to persistent lock.")
-
-        from modules.models import User, DutyStation, Product, PurchaseOrder, Customer, Order, Sale, Employee
-        from modules.purchasing_models import PurchaseRequest, ProcurementOrder, Supplier, YearlyPurchasePlan
-        from modules.production_models import Machine, ProductionConfig, ProductionRecord
 
         admin_user = User.query.filter_by(username='admin').first()
         if admin_user:
@@ -199,7 +220,9 @@ def init_db():
                     'sales': {'view': True, 'edit': True, 'delete': True},
                     'system_setup': {'view': True, 'edit': True, 'delete': True},
                     'user_management': {'view': True, 'edit': True, 'delete': True},
-                    'chat': {'view': True, 'edit': True, 'delete': True}
+                    'chat': {'view': True, 'edit': True, 'delete': True},
+                    'admin_activities': {'view': True, 'edit': True, 'delete': True},
+                    'resources': {'view': True, 'edit': True, 'delete': True}
                 }
             )
             admin_user.set_password('admin')
@@ -316,6 +339,7 @@ def init_db():
                 sample_request = PurchaseRequest(
                     request_code='PUR-PRO-001',
                     dept_name='Production',
+                    duty_station_id=1,
                     requested_by_id=admin_user.id,
                     item_name='Cotton Yarn',
                     description='High-quality cotton yarn for spinning',
@@ -392,6 +416,53 @@ def init_db():
             db.session.commit()
             logger.info("Sample production config created for Sendafa")
 
+        if not Position.query.filter_by(title='Software Engineer').first():
+            pos = Position(
+                title='Software Engineer',
+                description='Develop software solutions',
+                department='IT',
+                salary_range_min=4000,
+                salary_range_max=6000,
+                duty_station_id=1
+            )
+            db.session.add(pos)
+
+        if not Overtime.query.first():
+            ot = Overtime(employee_id=1, date=datetime.now().date(), hours=2.5, rate=1.5)
+            db.session.add(ot)
+
+        if not Attendance.query.first():
+            att = Attendance(employee_id=1, date=datetime.now().date(), check_in=datetime.now(), status='Present')
+            db.session.add(att)
+
+        if not AnnualLeave.query.first():
+            leave = AnnualLeave(employee_id=1, start_date=datetime.now().date(), end_date=(datetime.now() + timedelta(days=5)).date(), total_days=6)
+            db.session.add(leave)
+
+        if not EmploymentLetter.query.first():
+            letter = EmploymentLetter(employee_id=1, letter_type='Offer', content='Dear Employee,\nWe are pleased to offer you a position...')
+            db.session.add(letter)
+            db.session.flush()
+            file_path = os.path.join(app.config['LETTER_UPLOAD_FOLDER'], f"letter_{letter.id}.pdf")
+            try:
+                generate_pdf(letter.content, file_path)
+                letter.file_path = file_path.replace(app.root_path, '').lstrip(os.sep)
+            except Exception as e:
+                logger.error(f"Failed to generate PDF for EmploymentLetter {letter.id}: {str(e)}")
+                letter.file_path = None
+
+        if not Contract.query.first():
+            contract = Contract(employee_id=1, title='Employment Contract', content='This contract outlines...', start_date=datetime.now().date())
+            db.session.add(contract)
+            db.session.flush()
+            file_path = os.path.join(app.config['CONTRACT_UPLOAD_FOLDER'], f"contract_{contract.id}.pdf")
+            try:
+                generate_pdf(contract.content, file_path)
+                contract.file_path = file_path.replace(app.root_path, '').lstrip(os.sep)
+            except Exception as e:
+                logger.error(f"Failed to generate PDF for Contract {contract.id}: {str(e)}")
+                contract.file_path = None
+
         if not ProductionRecord.query.first():
             sample_machine = Machine.query.filter_by(name='Spinning Machine 1').first()
             if sample_machine:
@@ -407,6 +478,29 @@ def init_db():
                 db.session.add(sample_record)
                 db.session.commit()
                 logger.info("Sample production record created")
+
+        if not Project.query.filter_by(name='Project Alpha').first():
+            project1 = Project(
+                name='Project Alpha',
+                description='A sample project for testing',
+                start_date=datetime.now().date(),
+                end_date=(datetime.now() + timedelta(days=365)).date(),
+                status='Active',
+                duty_station_id=1
+            )
+            db.session.add(project1)
+        if not Project.query.filter_by(name='Project Beta').first():
+            project2 = Project(
+                name='Project Beta',
+                description='Another sample project for testing',
+                start_date=datetime.now().date(),
+                end_date=(datetime.now() + timedelta(days=180)).date(),
+                status='Active',
+                duty_station_id=2
+            )
+            db.session.add(project2)
+        db.session.commit()
+        logger.info("Sample projects added: Project Alpha, Project Beta")
 
         categories = [
             StockCategory(name='Raw Material', description='Cotton, Yarn, etc.'),

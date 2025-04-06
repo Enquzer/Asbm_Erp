@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{% endblock %}</title>
+    <title>{% block title %}ASBM ERP{% endblock %}</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         :root {
             --navbar-bg: #c0392b;
@@ -17,6 +20,14 @@
             --footer-bg: #2c3e50;
             --link-color: #212529;
             --link-hover: #d4d4d4;
+            --card-bg: #ffffff;
+            --card-hover-bg: #f1f1f1;
+            --chat-bg: #ffffff;
+            --chat-hover-bg: #f1f1f1;
+            --primary-color: #c0392b;
+            --text-color: #212529;
+            --font-size: 16px;
+            --dropdown-bg: #ffffff;
         }
         html, body {
             height: 100%;
@@ -27,7 +38,10 @@
             min-height: 100vh;
             background-color: var(--body-bg);
             color: var(--body-color);
+            font-size: var(--font-size);
             transition: background-color 0.3s, color 0.3s;
+            position: relative;
+            padding-top: 70px; /* Adjust based on navbar height to prevent content overlap */
         }
         .navbar {
             background-color: var(--navbar-bg);
@@ -35,9 +49,13 @@
         }
         .navbar-brand {
             color: #ffffff !important;
+            display: flex;
+            align-items: center;
+            position: relative;
         }
         .nav-link {
             color: var(--link-color) !important;
+            transition: color 0.3s;
         }
         .nav-link:hover {
             color: var(--link-hover) !important;
@@ -52,25 +70,6 @@
             padding: 20px;
             padding-bottom: 120px;
         }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 10px;
-        }
-        .nav-link i {
-            display: block;
-            font-size: 1.2em;
-            margin-bottom: 5px;
-        }
-        .nav-link {
-            padding: 0 !important;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
         .user-profile-img {
             width: 40px;
             height: 40px;
@@ -80,13 +79,34 @@
             border: 2px solid #fff;
         }
         .dropdown-menu {
+            background-color: var(--dropdown-bg);
+            color: var(--body-color);
+            min-width: 200px;
+            z-index: 1050;
             right: 0;
             left: auto;
-            background-color: var(--body-bg);
-            color: var(--body-color);
+            transition: background-color 0.3s;
         }
         .dropdown-item {
             color: var(--body-color);
+            display: flex;
+            align-items: center;
+            padding: 8px 16px;
+            transition: color 0.3s;
+        }
+        .dropdown-item:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+        .dropdown-item label {
+            margin: 0;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .dropdown-item input[type="color"],
+        .dropdown-item input[type="range"] {
+            margin-left: 10px;
         }
         footer {
             position: fixed;
@@ -125,11 +145,109 @@
         }
         .dark-mode {
             --body-bg: #212529;
-            --body-color: #ffffff;
+            --body-color: #e0e0e0;
             --navbar-bg: #8b1e15;
             --footer-bg: #1a252f;
             --link-color: #e0e0e0;
             --link-hover: #ffd700;
+            --card-bg: #343a40;
+            --card-hover-bg: #495057;
+            --chat-bg: #343a40;
+            --chat-hover-bg: #495057;
+            --dropdown-bg: #343a40;
+        }
+        .module-card {
+            background-color: var(--card-bg);
+            border: none;
+            border-radius: 15px;
+            transition: transform 0.3s ease, background-color 0.3s ease;
+            text-align: center;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .module-card:hover {
+            background-color: var(--card-hover-bg);
+            transform: translateY(-5px);
+        }
+        .module-card i {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            transition: color 0.3s;
+        }
+        .module-card p {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--body-color);
+        }
+        .chat-icon {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--navbar-bg);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            z-index: 1000;
+            transition: background-color 0.3s ease;
+        }
+        .chat-icon:hover {
+            background-color: #a53024;
+        }
+        .chat-box {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 300px;
+            height: 400px;
+            background-color: var(--chat-bg);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: none;
+            flex-direction: column;
+            z-index: 1000;
+            transition: background-color 0.3s ease;
+        }
+        .chat-box-header {
+            background-color: var(--navbar-bg);
+            color: white;
+            padding: 10px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s;
+        }
+        .chat-box-header h5 {
+            margin: 0;
+            font-size: 1rem;
+        }
+        .chat-box-body {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            color: var(--body-color);
+        }
+        .chat-box-footer {
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+        .chat-box-footer input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            color: var(--body-color);
+            background-color: var(--card-bg);
         }
         @media (max-width: 768px) {
             .contact-info {
@@ -142,133 +260,137 @@
             .container {
                 padding-bottom: 180px;
             }
+            .chat-box {
+                width: 250px;
+                height: 300px;
+            }
+        }
+        .notification-icon, .resources-icon {
+            color: var(--link-color);
+            font-size: 1.5rem;
+            margin-right: 15px;
+            transition: color 0.3s;
+        }
+        .notification-icon:hover, .resources-icon:hover {
+            color: var(--link-hover);
+        }
+        .mode-toggle {
+            background-color: var(--card-bg);
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin-right: 15px;
+            transition: background-color 0.3s;
+        }
+        .mode-toggle i {
+            font-size: 1rem;
+            color: var(--body-color);
+            transition: color 0.3s;
+        }
+        .mode-toggle:hover {
+            background-color: var(--card-hover-bg);
+        }
+        /* Updated styles for favicon positioning and hovering effect */
+        .navbar-brand-container {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+        .navbar-favicon {
+            width: 50px; /* Width remains the same */
+            height: 60px; /* Increased height to extend further past the navbar */
+            position: absolute;
+            top: 5px; /* Adjusted to position it closer to the top */
+            left: 10px;
+            z-index: 1000;
+            transition: transform 0.3s ease; /* Smooth hover effect */
+        }
+        .navbar-favicon:hover {
+            transform: translateY(5px); /* Slight downward movement on hover for effect */
+        }
+        .navbar-brand-text {
+            margin-left: 80px; /* Increased margin to shift "ASBM ERP" further right */
+        }
+        .navbar-brand-favicon-wrapper {
+            position: relative;
+            height: 70px; /* Increased to accommodate the larger favicon */
+            display: flex;
+            align-items: center;
+        }
+        /* Align "Home" and "Modules" with "ASBM ERP" text */
+        .navbar-nav.me-auto {
+            margin-left: 0; /* Remove any default margin */
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
         }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('index') }}"><i class="fas fa-industry me-2"></i>ASBM ERP</a>
+            <div class="navbar-brand-container">
+                <div class="navbar-brand-favicon-wrapper">
+                    <a class="navbar-brand" href="{{ url_for('index') }}">
+                        <img src="{{ url_for('static', filename='favicon.ico') }}" alt="ASBM ERP Logo" class="navbar-favicon">
+                        <span class="navbar-brand-text">ASBM ERP</span>
+                    </a>
+                </div>
+            </div>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     {% if current_user.is_authenticated %}
-                        {% if current_user.has_permission('dashboard') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'dashboard.dashboard' %}active{% endif %}" href="{{ url_for('dashboard.dashboard') }}">
-                                    <i class="fas fa-tachometer-alt"></i>Dashboard
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% if current_user.has_permission('orders') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'order.order_list' %}active{% endif %}" href="{{ url_for('order.order_list') }}">
-                                    <i class="fas fa-shopping-cart"></i>Orders
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% if current_user.has_permission('products') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'product.products' %}active{% endif %}" href="{{ url_for('product.products') }}">
-                                    <i class="fas fa-box"></i>Products
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% if current_user.has_permission('customers') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'product.customers' %}active{% endif %}" href="{{ url_for('product.customers') }}">
-                                    <i class="fas fa-users"></i>Customers
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% if current_user.has_permission('hr') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'hr.hr' %}active{% endif %}" href="{{ url_for('hr.hr') }}">
-                                    <i class="fas fa-user-tie"></i>HR
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% if current_user.has_permission('notifications') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'notifications.notifications' %}active{% endif %}" href="{{ url_for('notifications.notifications') }}">
-                                    <i class="fas fa-bell"></i>Notifications
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% if current_user.has_permission('planning') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'planning.planning' %}active{% endif %}" href="{{ url_for('planning.planning') }}">
-                                    <i class="fas fa-calendar-alt"></i>Planning
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% if current_user.has_permission('production') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'production.production' %}active{% endif %}" href="{{ url_for('production.production') }}">
-                                    <i class="fas fa-cogs"></i>Production
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% if current_user.has_permission('project') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'project.project' %}active{% endif %}" href="{{ url_for('project.project') }}">
-                                    <i class="fas fa-project-diagram"></i>Project
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% if current_user.has_permission('purchasing') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'purchasing.purchasing' %}active{% endif %}" href="{{ url_for('purchasing.purchasing') }}">
-                                    <i class="fas fa-shopping-bag"></i>Purchasing
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'purchasing.purchase_request' %}active{% endif %}" href="{{ url_for('purchasing.purchase_request') }}">
-                                    <i class="fas fa-file-alt"></i>Purchase Requests
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% if current_user.has_permission('stock_management') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'stock_management.stock_management' %}active{% endif %}" href="{{ url_for('stock_management.stock_management') }}">
-                                    <i class="fas fa-warehouse"></i>Stock Management
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% if current_user.has_permission('sales') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'sales.sales' %}active{% endif %}" href="{{ url_for('sales.sales') }}">
-                                    <i class="fas fa-chart-line"></i>Sales
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% if current_user.has_permission('system_setup') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'system_setup.system_setup' %}active{% endif %}" href="{{ url_for('system_setup.system_setup') }}">
-                                    <i class="fas fa-tools"></i>System Setup
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% if current_user.has_permission('user_management') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'user_management.manage_users' %}active{% endif %}" href="{{ url_for('user_management.manage_users') }}">
-                                    <i class="fas fa-user-cog"></i>User Management
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% if current_user.has_permission('chat') %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'chat.chat' %}active{% endif %}" href="{{ url_for('chat.chat') }}">
-                                    <i class="fas fa-comments"></i>Chat
-                                </a>
-                            </li>
-                        {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
+                                <i class="fas fa-home"></i> Home
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#modulesModal">
+                                <i class="fas fa-th"></i> Modules
+                            </a>
+                        </li>
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-center">
                     {% if current_user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle resources-icon" href="#" id="resourcesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-book"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="resourcesDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('resources.resources') }}"><i class="fas fa-folder-open me-2"></i>All Resources</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('resources.resources') }}?category=sops"><i class="fas fa-file-alt me-2"></i>SOPs</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('resources.resources') }}?category=guidelines"><i class="fas fa-guide me-2"></i>Guidelines</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('resources.resources') }}?category=rules"><i class="fas fa-gavel me-2"></i>Rules & Regulations</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('resources.resources') }}?category=howto"><i class="fas fa-question-circle me-2"></i>How to Use ERP</a></li>
+                                {% if current_user.is_admin() %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('resources.upload_resource') }}"><i class="fas fa-upload me-2"></i>Upload Resource</a></li>
+                                {% endif %}
+                            </ul>
+                        </li>
+                        {% if current_user.has_permission('notifications') %}
+                            <li class="nav-item">
+                                <a class="nav-link notification-icon" href="{{ url_for('notifications.notifications') }}">
+                                    <i class="fas fa-bell"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                        <li class="nav-item">
+                            <button class="mode-toggle" id="toggleMode">
+                                <span id="modeIcon"><i class="fas fa-sun"></i></span>
+                            </button>
+                        </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <img src="{{ url_for('static', filename='images/uploads/' + (current_user.profile_picture or 'placeholder_user.jpg')) }}" alt="User Profile" class="user-profile-img">
@@ -293,11 +415,6 @@
                                         <input type="range" id="fontSize" min="12" max="24" value="16">
                                     </label>
                                 </li>
-                                <li>
-                                    <button class="dropdown-item" id="toggleMode">
-                                        <span id="modeIcon"><i class="fas fa-moon"></i></span> Toggle Mode
-                                    </button>
-                                </li>
                             </ul>
                         </li>
                     {% else %}
@@ -312,6 +429,174 @@
         </div>
     </nav>
 
+    <!-- Modules Modal -->
+    <div class="modal fade" id="modulesModal" tabindex="-1" aria-labelledby="modulesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modulesModalLabel">Modules</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        {% if current_user.is_authenticated %}
+                            {% if current_user.has_permission('dashboard') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('dashboard.dashboard') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-tachometer-alt"></i>
+                                            <p>Dashboard</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('orders') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('order.order_list') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-shopping-cart"></i>
+                                            <p>Orders</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('products') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('product.products') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-box"></i>
+                                            <p>Products</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('customers') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('product.customers') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-users"></i>
+                                            <p>Customers</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('hr') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('hr.hr') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-user-tie"></i>
+                                            <p>HR</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('admin_activities') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('admin_activities.admin_activities') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-user-shield"></i>
+                                            <p>Admin</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('planning') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('planning.planning') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-calendar-alt"></i>
+                                            <p>Planning</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('production') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('production.production') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-cogs"></i>
+                                            <p>Production</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('project') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('project.project') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-project-diagram"></i>
+                                            <p>Project</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('purchasing') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('purchasing.purchasing') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-shopping-bag"></i>
+                                            <p>Purchasing</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('purchasing') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('purchasing.purchase_request') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-file-alt"></i>
+                                            <p>Purchase Requests</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('stock_management') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('stock_management.stock_management') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-warehouse"></i>
+                                            <p>Stock Management</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('sales') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('sales.sales') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-chart-line"></i>
+                                            <p>Sales</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('system_setup') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('system_setup.system_setup') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-tools"></i>
+                                            <p>System Setup</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('user_management') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('user_management.manage_users') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-user-cog"></i>
+                                            <p>User Management</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -323,107 +608,342 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        {% block content %}{% endblock %}
-    </div>
 
-    <footer>
-        <p>© 2025 ASBM ERP. All rights reserved.</p>
-        <div class="contact-info">
-            <div class="contact-item">
-                <i class="fas fa-map-marker-alt"></i>
-                Nisser Building 7th Floor, Cape Verde Street, Addis Ababa, Ethiopia
-            </div>
-            <div class="contact-item">
-                <i class="fas fa-phone"></i>
-                +251-116-685-888
-            </div>
-            <div class="contact-item">
-                <i class="fas fa-fax"></i>
-                +251-116-685-999
-            </div>
-            <div class="contact-item">
-                <i class="fas fa-envelope"></i>
-                <a href="mailto:info@asbm.et">info@asbm.et</a>
-            </div>
-            <div class="contact-item">
-                <i class="fas fa-globe"></i>
-                <a href="http://www.asbm.et">www.asbm.et</a>
-            </div>
+        {% if request.endpoint == 'index' %}
+            <div class="mt-5">
+                <h2 class="mb-4">Welcome to ASBM ERP</h2>
+                <div class="row">
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.has_permission('dashboard') %}
+                            <div class="col-md-4 mb-4">
+                                <a href="{{ url_for('dashboard.dashboard') }}" class="text-decoration-none">
+                                    <div class="module-card">
+                                        <i class="fas fa-tachometer-alt"></i>
+                                        <p>Dashboard</p>
+                                    </div>
+                                </a>
+                            </div>
+                        {% endif %}
+                        {% if current_user.has_permission('orders') %}
+                            <div class="col-md-4 mb-4">
+                                <a href="{{ url_for('order.order_list') }}" class="text-decoration-none">
+                                    <div class="module-card">
+                                        <i class="fas fa-shopping-cart"></i>
+                                        <p>Orders</p>
+                                    </div>
+                                </a>
+                            </div>
+                        {% endif %}
+                        {% if current_user.has_permission('products') %}
+                            <div class="col-md-4 mb-4">
+                                <a href="{{ url_for('product.products') }}" class="text-decoration-none">
+                                    <div class="module-card">
+                                        <i class="fas fa-box"></i>
+                                        <p>Products</p>
+                                    </div>
+                                </a>
+                            </div>
+                        {% endif %}
+                        {% if current_user.has_permission('customers') %}
+                            <div class="col-md-4 mb-4">
+                                <a href="{{ url_for('product.customers') }}" class="text-decoration-none">
+                                    <div class="module-card">
+                                        <i class="fas fa-users"></i>
+                                        <p>Customers</p>
+                                    </div>
+                                </a>
+                            </div>
+                        {% endif %}
+                        {% if current_user.has_permission('hr') %}
+                            <div class="col-md-4 mb-4">
+                                <a href="{{ url_for('hr.hr') }}" class="text-decoration-none">
+                                    <div class="module-card">
+                                        <i class="fas fa-user-tie"></i>
+                                        <p>HR</p>
+                                    </div>
+                                </a>
+                            </div>
+                        {% endif %}
+                        {% if current_user.has_permission('admin_activities') %}
+                            <div class="col-md-4 mb-4">
+                                <a href="{{ url_for('admin_activities.admin_activities') }}" class="text-decoration-none">
+                                    <div class="module-card">
+                                        <i class="fas fa-user-shield"></i>
+                                        <p>Admin</p>
+                                    </div>
+                                </a>
+                            </div>
+                        {% endif %}
+                        {% if current_user.has_permission('planning') %}
+                            <div class="col-md-4 mb-4">
+                                <a href="{{ url_for('planning.planning') }}" class="text-decoration-none">
+                                    <div class="module-card">
+                                        <i class="fas fa-calendar-alt"></i>
+                                        <p>Planning</p>
+                                    </div>
+                                </a>
+                            </div>
+                        {% endif %}
+                        {% if current_user.has_permission('production') %}
+                            <div class="col-md-4 mb-4">
+                                <a href="{{ url_for('production.production') }}" class="text-decoration-none">
+                                    <div class="module-card">
+                                        <i class="fas fa-cogs"></i>
+                                        <p>Production</p>
+                                    </div>
+                                </a>
+                            </div>
+                        {% endif %}
+                        {% if current_user.has_permission('project') %}
+                            <div class="col-md-4 mb-4">
+                                <a href="{{ url_for('project.project') }}" class="text-decoration-none">
+                                    <div class="module-card">
+                                        <i class="fas fa-project-diagram"></i>
+                                        <p>Project</p>
+                                    </div>
+                                </a>
+                            </div>
+                        {% endif %}
+                        {% if current_user.has_permission('purchasing') %}
+                            <div class="col-md-4 mb-4">
+                                <a href="{{ url_for('purchasing.purchasing') }}" class="text-decoration-none">
+                                    <div class="module-card">
+                                        <i class="fas fa-shopping-bag"></i>
+                                        <p>Purchasing</p>
+                                    </div>
+                                </a>
+                            </div>
+                        {% endif %}
+                        {% if current_user.has_permission('purchasing') %}
+                            <div class="col-md-4 mb-4">
+                                <a href="{{ url_for('purchasing.purchase_request') }}" class="text-decoration-none">
+                                    <div class="module-card">
+                                        <i class="fas fa-file-alt"></i>
+                                        <p>Purchase Requests</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('stock_management') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('stock_management.stock_management') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-warehouse"></i>
+                                            <p>Stock Management</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('sales') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('sales.sales') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-chart-line"></i>
+                                            <p>Sales</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('system_setup') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('system_setup.system_setup') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-tools"></i>
+                                            <p>System Setup</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if current_user.has_permission('user_management') %}
+                                <div class="col-md-4 mb-4">
+                                    <a href="{{ url_for('user_management.manage_users') }}" class="text-decoration-none">
+                                        <div class="module-card">
+                                            <i class="fas fa-user-cog"></i>
+                                            <p>User Management</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="col-12 text-center">
+                                <h4>Please log in to access the modules.</h4>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                {% block content %}{% endblock %}
+            {% endif %}
         </div>
-    </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-    <script>
-        document.getElementById('themeColor').addEventListener('change', function(e) {
-            document.documentElement.style.setProperty('--navbar-bg', e.target.value);
-            localStorage.setItem('themeColor', e.target.value);
-        });
+        {% if current_user.is_authenticated and current_user.has_permission('chat') %}
+            <div class="chat-icon" id="chatIcon">
+                <i class="fas fa-comments"></i>
+            </div>
+            <div class="chat-box" id="chatBox">
+                <div class="chat-box-header">
+                    <h5>Chat</h5>
+                    <button class="btn-close btn-close-white" id="closeChat"></button>
+                </div>
+                <div class="chat-box-body">
+                    <p>Chat functionality coming soon...</p>
+                </div>
+                <div class="chat-box-footer">
+                    <input type="text" placeholder="Type a message..." disabled>
+                </div>
+            </div>
+        {% endif %}
 
-        document.getElementById('fontColor').addEventListener('change', function(e) {
-            document.documentElement.style.setProperty('--body-color', e.target.value);
-            localStorage.setItem('fontColor', e.target.value);
-        });
+        <footer>
+            <p>© 2025 ASBM ERP. All rights reserved.</p>
+            <div class="contact-info">
+                <div class="contact-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    Nisser Building 7th Floor, Cape Verde Street, Addis Ababa, Ethiopia
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-phone"></i>
+                    +251-116-685-888
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-fax"></i>
+                    +251-116-685-999
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-envelope"></i>
+                    <a href="mailto:info@asbm.et">info@asbm.et</a>
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-globe"></i>
+                    <a href="http://www.asbm.et">www.asbm.et</a>
+                </div>
+            </div>
+        </footer>
 
-        document.getElementById('fontSize').addEventListener('input', function(e) {
-            document.documentElement.style.setProperty('--bs-body-font-size', e.target.value + 'px');
-            localStorage.setItem('fontSize', e.target.value);
-        });
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                function forceRepaint() {
+                    document.body.style.display = 'none';
+                    document.body.offsetHeight;
+                    document.body.style.display = 'block';
+                }
 
-        document.getElementById('toggleMode').addEventListener('click', function() {
-            const body = document.body;
-            if (body.classList.contains('dark-mode')) {
-                body.classList.remove('dark-mode');
-                document.documentElement.style.setProperty('--body-bg', '#f8f9fa');
-                document.documentElement.style.setProperty('--body-color', '#212529');
-                document.documentElement.style.setProperty('--navbar-bg', localStorage.getItem('themeColor') || '#c0392b');
-                document.documentElement.style.setProperty('--footer-bg', '#2c3e50');
-                document.documentElement.style.setProperty('--link-color', '#212529');
-                document.documentElement.style.setProperty('--link-hover', '#d4d4d4');
-                document.getElementById('modeIcon').innerHTML = '<i class="fas fa-moon"></i>';
-                localStorage.setItem('mode', 'light');
-            } else {
-                body.classList.add('dark-mode');
-                document.documentElement.style.setProperty('--body-bg', '#212529');
-                document.documentElement.style.setProperty('--body-color', '#ffffff');
-                document.documentElement.style.setProperty('--navbar-bg', '#8b1e15');
-                document.documentElement.style.setProperty('--footer-bg', '#1a252f');
-                document.documentElement.style.setProperty('--link-color', '#e0e0e0');
-                document.documentElement.style.setProperty('--link-hover', '#ffd700');
-                document.getElementById('modeIcon').innerHTML = '<i class="fas fa-sun"></i>';
-                localStorage.setItem('mode', 'dark');
-            }
-        });
+                const chatIcon = document.getElementById('chatIcon');
+                const chatBox = document.getElementById('chatBox');
+                const closeChat = document.getElementById('closeChat');
+                if (chatIcon && chatBox && closeChat) {
+                    chatIcon.addEventListener('click', function() {
+                        chatBox.style.display = chatBox.style.display === 'flex' ? 'none' : 'flex';
+                    });
+                    closeChat.addEventListener('click', function() {
+                        chatBox.style.display = 'none';
+                    });
+                }
 
-        window.onload = function() {
-            const savedTheme = localStorage.getItem('themeColor');
-            const savedFontColor = localStorage.getItem('fontColor');
-            const savedFontSize = localStorage.getItem('fontSize');
-            const savedMode = localStorage.getItem('mode');
+                var dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
+                dropdownElementList.forEach(function(dropdownToggleEl) {
+                    new bootstrap.Dropdown(dropdownToggleEl);
+                });
 
-            if (savedTheme) document.documentElement.style.setProperty('--navbar-bg', savedTheme);
-            if (savedFontColor) document.documentElement.style.setProperty('--body-color', savedFontColor);
-            if (savedFontSize) document.documentElement.style.setProperty('--bs-body-font-size', savedFontSize + 'px');
-            if (savedMode === 'dark') {
-                document.body.classList.add('dark-mode');
-                document.documentElement.style.setProperty('--body-bg', '#212529');
-                document.documentElement.style.setProperty('--body-color', '#ffffff');
-                document.documentElement.style.setProperty('--navbar-bg', '#8b1e15');
-                document.documentElement.style.setProperty('--footer-bg', '#1a252f');
-                document.documentElement.style.setProperty('--link-color', '#e0e0e0');
-                document.documentElement.style.setProperty('--link-hover', '#ffd700');
-                document.getElementById('modeIcon').innerHTML = '<i class="fas fa-sun"></i>';
-            } else {
-                document.body.classList.remove('dark-mode');
-                document.documentElement.style.setProperty('--body-bg', '#f8f9fa');
-                document.documentElement.style.setProperty('--body-color', '#212529');
-                document.documentElement.style.setProperty('--navbar-bg', savedTheme || '#c0392b');
-                document.documentElement.style.setProperty('--footer-bg', '#2c3e50');
-                document.documentElement.style.setProperty('--link-color', '#212529');
-                document.documentElement.style.setProperty('--link-hover', '#d4d4d4');
-                document.getElementById('modeIcon').innerHTML = '<i class="fas fa-moon"></i>';
-            }
-        };
-    </script>
-</body>
+                const themeColorInput = document.getElementById('themeColor');
+                const fontColorInput = document.getElementById('fontColor');
+                const fontSizeInput = document.getElementById('fontSize');
+                const toggleModeButton = document.getElementById('toggleMode');
+                const modeIcon = document.getElementById('modeIcon');
+
+                const savedThemeColor = localStorage.getItem('themeColor') || '#c0392b';
+                const savedFontColor = localStorage.getItem('fontColor') || '#212529';
+                const savedFontSize = localStorage.getItem('fontSize') || '16';
+                const savedMode = localStorage.getItem('mode') || 'light';
+
+                document.documentElement.style.setProperty('--navbar-bg', savedThemeColor);
+                document.documentElement.style.setProperty('--primary-color', savedThemeColor);
+                if (themeColorInput) themeColorInput.value = savedThemeColor;
+
+                document.documentElement.style.setProperty('--body-color', savedFontColor);
+                document.documentElement.style.setProperty('--text-color', savedFontColor);
+                if (fontColorInput) fontColorInput.value = savedFontColor;
+
+                document.documentElement.style.setProperty('--font-size', savedFontSize + 'px');
+                if (fontSizeInput) fontSizeInput.value = savedFontSize;
+
+                if (savedMode === 'dark') {
+                    document.body.classList.add('dark-mode');
+                    if (modeIcon) modeIcon.innerHTML = '<i class="fas fa-moon"></i>';
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    if (modeIcon) modeIcon.innerHTML = '<i class="fas fa-sun"></i>';
+                }
+
+                if (themeColorInput) {
+                    themeColorInput.addEventListener('change', function(e) {
+                        const color = e.target.value;
+                        document.documentElement.style.setProperty('--navbar-bg', color);
+                        document.documentElement.style.setProperty('--primary-color', color);
+                        localStorage.setItem('themeColor', color);
+                        forceRepaint();
+                    });
+                }
+
+                if (fontColorInput) {
+                    fontColorInput.addEventListener('change', function(e) {
+                        const color = e.target.value;
+                        document.documentElement.style.setProperty('--body-color', color);
+                        document.documentElement.style.setProperty('--text-color', color);
+                        localStorage.setItem('fontColor', color);
+                        forceRepaint();
+                    });
+                }
+
+                if (fontSizeInput) {
+                    fontSizeInput.addEventListener('input', function(e) {
+                        const size = e.target.value + 'px';
+                        document.documentElement.style.setProperty('--font-size', size);
+                        localStorage.setItem('fontSize', e.target.value);
+                        forceRepaint();
+                    });
+                }
+
+                if (toggleModeButton && modeIcon) {
+                    toggleModeButton.addEventListener('click', function() {
+                        const body = document.body;
+                        const isDarkMode = body.classList.toggle('dark-mode');
+
+                        if (isDarkMode) {
+                            modeIcon.innerHTML = '<i class="fas fa-moon"></i>';
+                            document.documentElement.style.setProperty('--body-bg', '#212529');
+                            document.documentElement.style.setProperty('--body-color', '#e0e0e0');
+                            document.documentElement.style.setProperty('--navbar-bg', '#8b1e15');
+                            document.documentElement.style.setProperty('--footer-bg', '#1a252f');
+                            document.documentElement.style.setProperty('--link-color', '#e0e0e0');
+                            document.documentElement.style.setProperty('--link-hover', '#ffd700');
+                            document.documentElement.style.setProperty('--card-bg', '#343a40');
+                            document.documentElement.style.setProperty('--card-hover-bg', '#495057');
+                            document.documentElement.style.setProperty('--chat-bg', '#343a40');
+                            document.documentElement.style.setProperty('--chat-hover-bg', '#495057');
+                            document.documentElement.style.setProperty('--dropdown-bg', '#343a40');
+                            localStorage.setItem('mode', 'dark');
+                        } else {
+                            modeIcon.innerHTML = '<i class="fas fa-sun"></i>';
+                            document.documentElement.style.setProperty('--body-bg', '#f8f9fa');
+                            document.documentElement.style.setProperty('--body-color', '#212529');
+                            document.documentElement.style.setProperty('--navbar-bg', savedThemeColor);
+                            document.documentElement.style.setProperty('--footer-bg', '#2c3e50');
+                            document.documentElement.style.setProperty('--link-color', '#212529');
+                            document.documentElement.style.setProperty('--link-hover', '#d4d4d4');
+                            document.documentElement.style.setProperty('--card-bg', '#ffffff');
+                            document.documentElement.style.setProperty('--card-hover-bg', '#f1f1f1');
+                            document.documentElement.style.setProperty('--chat-bg', '#ffffff');
+                            document.documentElement.style.setProperty('--chat-hover-bg', '#f1f1f1');
+                            document.documentElement.style.setProperty('--dropdown-bg', '#ffffff');
+                            localStorage.setItem('mode', 'light');
+                        }
+                        forceRepaint();
+                    });
+                }
+
+                forceRepaint();
+            });
+        </script>
+    </body>
 </html>

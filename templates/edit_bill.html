@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Bill</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <h1>Edit Bill</h1>
+    <form method="POST">
+        <label>Bill Number:</label>
+        <input type="text" name="bill_number" value="{{ bill.bill_number }}" required><br>
+        <label>Receipt Number:</label>
+        <input type="text" name="receipt_number" value="{{ bill.receipt_number }}"><br>
+        <label>Bill Type:</label>
+        <select name="bill_type" id="bill_type" onchange="toggleDescription()">
+            {% for type in bill_types %}
+                <option value="{{ type }}" {% if type == bill.bill_type %}selected{% endif %}>{{ type }}</option>
+            {% endfor %}
+        </select><br>
+        <div id="description_field" style="display:{{ 'block' if bill.bill_type == 'Other' else 'none' }};">
+            <label>Description (for Other):</label>
+            <textarea name="description">{{ bill.description or '' }}</textarea><br>
+        </div>
+        <label>Amount:</label>
+        <input type="number" name="amount" step="0.01" value="{{ bill.amount }}" required><br>
+        <label>Due Date:</label>
+        <input type="date" name="due_date" value="{{ bill.due_date.strftime('%Y-%m-%d') }}" required><br>
+        <label>Duty Station:</label>
+        <select name="duty_station_id" required>
+            {% for ds in duty_stations %}
+                <option value="{{ ds.id }}" {% if ds.id == bill.duty_station_id %}selected{% endif %}>{{ ds.name }}</option>
+            {% endfor %}
+        </select><br>
+        <label>Status:</label>
+        <select name="status">
+            <option value="Pending" {% if bill.status == 'Pending' %}selected{% endif %}>Pending</option>
+            <option value="Paid" {% if bill.status == 'Paid' %}selected{% endif %}>Paid</option>
+            <option value="Overdue" {% if bill.status == 'Overdue' %}selected{% endif %}>Overdue</option>
+        </select><br>
+        <button type="submit">Update Bill</button>
+    </form>
+    <a href="{{ url_for('manage_bills') }}">Back to Bills</a>
+    <script>
+        function toggleDescription() {
+            var billType = document.getElementById('bill_type').value;
+            var descriptionField = document.getElementById('description_field');
+            descriptionField.style.display = billType === 'Other' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>

@@ -2,422 +2,1084 @@
 {% block content %}
 <div class="container mt-5">
     <h2>HR Management</h2>
-    <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
 
-    <div class="mb-3">
-        <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">Add Employee</a>
-        <a href="{{ url_for('hr.export_excel') }}" class="btn btn-success">Export to Excel</a>
-        <a href="{{ url_for('hr.export_pdf') }}" class="btn btn-danger">Export to PDF</a>
-    </div>
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'employees' %}active{% endif %}" href="?tab=employees">Employees</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'overtime' %}active{% endif %}" href="?tab=overtime">Overtime</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'attendance' %}active{% endif %}" href="?tab=attendance">Attendance</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'leave' %}active{% endif %}" href="?tab=leave">Leave</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'letters' %}active{% endif %}" href="?tab=letters">Letters</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'contracts' %}active{% endif %}" href="?tab=contracts">Contracts</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'positions' %}active{% endif %}" href="?tab=positions">Positions</a>
+        </li>
+    </ul>
 
-    <form method="GET" action="{{ url_for('hr.hr') }}" class="mb-3">
+    <!-- Filter Form for All Tabs -->
+    <form method="GET" action="{{ url_for('hr.hr') }}" class="mb-4">
+        <input type="hidden" name="tab" value="{{ tab }}">
         <div class="row">
-            <div class="col-md-3">
-                <input type="text" name="search_name" class="form-control" placeholder="Search by Name" value="{{ search_name }}">
+            <div class="col-md-2">
+                <label>Search Name</label>
+                <input type="text" name="search_name" class="form-control" value="{{ search_name }}" aria-label="Search by name">
             </div>
             <div class="col-md-2">
-                <input type="date" name="start_date" class="form-control" placeholder="Start Date" value="{{ start_date }}">
-            </div>
-            <div class="col-md-2">
-                <input type="date" name="end_date" class="form-control" placeholder="End Date" value="{{ end_date }}">
-            </div>
-            <div class="col-md-3">
-                <select name="duty_station_id" class="form-control">
-                    <option value="all" {% if duty_station_id == 'all' %}selected{% endif %}>All Duty Stations</option>
+                <label>Duty Station</label>
+                <select name="duty_station_id" class="form-control" aria-label="Select duty station">
+                    <option value="all" {% if duty_station_id == 'all' %}selected{% endif %}>All</option>
                     {% for ds in duty_stations %}
                         <option value="{{ ds.id }}" {% if duty_station_id == ds.id|string %}selected{% endif %}>{{ ds.name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-md-2">
-                <button type="submit" class="btn btn-primary">Filter</button>
+                <label>Start Date</label>
+                <input type="date" name="start_date" class="form-control" value="{{ start_date }}" aria-label="Start date">
+            </div>
+            <div class="col-md-2">
+                <label>End Date</label>
+                <input type="date" name="end_date" class="form-control" value="{{ end_date }}" aria-label="End date">
+            </div>
+            <div class="col-md-2">
+                <label>Gender</label>
+                <select name="gender" class="form-control" aria-label="Select gender">
+                    <option value="all" {% if gender == 'all' %}selected{% endif %}>All</option>
+                    <option value="Male" {% if gender == 'Male' %}selected{% endif %}>Male</option>
+                    <option value="Female" {% if gender == 'Female' %}selected{% endif %}>Female</option>
+                    <option value="Other" {% if gender == 'Other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label>Department</label>
+                <select name="department" class="form-control" aria-label="Select department">
+                    <option value="all" {% if department == 'all' %}selected{% endif %}>All</option>
+                    {% for dept in departments %}
+                        <option value="{{ dept }}" {% if department == dept %}selected{% endif %}>{{ dept }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary mt-4">Filter</button>
             </div>
         </div>
     </form>
 
-    <table class="table table-striped" id="employeeTable">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Title</th>
-                <th>Department</th>
-                <th>Location</th>
-                <th>Phone</th>
-                <th>Duty Station</th>
-                <th>Manager</th>
-                <th>Photo</th>
-                <th>CV</th>
-                <th>Monthly Salary</th>
-                <th>Additional Benefits</th>
-                <th>Hire Date</th>
-                <th>Uploaded Date</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for employee in employees %}
-            <tr id="employee-row-{{ employee.id }}">
-                <td>{{ employee.id }}</td>
-                <td>{{ employee.name }}</td>
-                <td>{{ employee.title }}</td>
-                <td>{{ employee.department }}</td>
-                <td>{{ employee.location }}</td>
-                <td>{{ employee.phone_number }}</td>
-                <td>{{ employee.duty_station.name if employee.duty_station else 'N/A' }}</td>
-                <td>{{ employee.manager.name if employee.manager else 'None' }}</td>
-                <td>{% if employee.photo_path %}<a href="{{ url_for('static', filename=employee.photo_path) }}" target="_blank">View</a>{% else %}N/A{% endif %}</td>
-                <td>{% if employee.cv_path %}<a href="{{ url_for('static', filename=employee.cv_path) }}" target="_blank">View</a>{% else %}N/A{% endif %}</td>
-                <td>{{ employee.monthly_salary }}</td>
-                <td>{{ employee.additional_benefits }}</td>
-                <td>{{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else '' }}</td>
-                <td>{{ employee.created_at.strftime('%Y-%m-%d') if employee.created_at else '' }}</td>
-                <td>
-                    <a href="#" class="text-warning me-2" data-bs-toggle="modal" data-bs-target="#modifyEmployeeModal{{ employee.id }}">Edit</a>
-                    <a href="#" class="text-danger remove-employee" data-employee-id="{{ employee.id }}">Delete</a>
-                </td>
-            </tr>
-            <div class="modal fade" id="modifyEmployeeModal{{ employee.id }}" tabindex="-1">
-                <div class="modal-dialog modal-lg">
+    <!-- Employees Tab -->
+    {% if tab == 'employees' %}
+        <h3>Employees</h3>
+        <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">Add Employee</button>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Job Title</th>
+                    <th>Department</th>
+                    <th>Duty Station</th>
+                    <th>Phone</th>
+                    <th>Salary</th>
+                    <th>Hire Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                    <tr>
+                        <td>{{ emp.id }}</td>
+                        <td>{{ emp.name }}</td>
+                        <td>{{ emp.title }}</td>
+                        <td>{{ emp.department }}</td>
+                        <td>{{ emp.duty_station.name if emp.duty_station else 'N/A' }}</td>
+                        <td>{{ emp.phone_number }}</td>
+                        <td>{{ emp.monthly_salary }}</td>
+                        <td>{{ emp.hire_date }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modifyEmployeeModal{{ emp.id }}">Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteEmployee({{ emp.id }})">Delete</button>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="{{ url_for('hr.export_report', report_type='employees') }}" class="btn btn-success">Export Employees</a>
+        <a href="{{ url_for('hr.export_pdf', report_type='employees') }}" class="btn btn-success">Export PDF</a>
+
+        <!-- Add Employee Modal -->
+        <div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addEmployeeModalLabel">Add Employee</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addEmployeeForm" enctype="multipart/form-data">
+                            {{ form.hidden_tag() }}
+                            <input type="hidden" name="action" value="add_employee">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="form-group">
+                                <label>Name</label>
+                                {{ form.name(class="form-control", required="required", **{'aria-label': 'Employee name'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Address Woreda</label>
+                                {{ form.address_woreda(class="form-control", **{'aria-label': 'Address Woreda'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Address Kifle Ketema</label>
+                                {{ form.address_kifle_ketema(class="form-control", **{'aria-label': 'Address Kifle Ketema'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Phone Number</label>
+                                {{ form.phone_number(class="form-control", **{'aria-label': 'Phone number'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Emergency Contact Name</label>
+                                {{ form.emergency_contact_name(class="form-control", **{'aria-label': 'Emergency contact name'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Emergency Contact Phone</label>
+                                {{ form.emergency_contact_phone(class="form-control", **{'aria-label': 'Emergency contact phone'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Photo</label>
+                                {{ form.photo(class="form-control-file", **{'aria-label': 'Upload photo'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>CV</label>
+                                {{ form.cv(class="form-control-file", **{'aria-label': 'Upload CV'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Manager</label>
+                                {{ form.manager_id(class="form-control", **{'aria-label': 'Select manager'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Position</label>
+                                {{ form.position_id(class="form-control", **{'aria-label': 'Select position'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Badge ID</label>
+                                {{ form.badge_id(class="form-control", **{'aria-label': 'Badge ID'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Location</label>
+                                {{ form.location(class="form-control", **{'aria-label': 'Location'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Birth Date</label>
+                                {{ form.birth_date(class="form-control", **{'aria-label': 'Birth date'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Hire Date</label>
+                                {{ form.hire_date(class="form-control", required="required", **{'aria-label': 'Hire date'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Internal Notes</label>
+                                {{ form.internal_notes(class="form-control", **{'aria-label': 'Internal notes'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Monthly Salary</label>
+                                {{ form.monthly_salary(class="form-control", required="required", **{'aria-label': 'Monthly salary'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Additional Benefits</label>
+                                {{ form.additional_benefits(class="form-control", **{'aria-label': 'Additional benefits'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Job Title</label>
+                                {{ form.job_title(class="form-control", **{'aria-label': 'Job title'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Gender</label>
+                                {{ form.gender(class="form-control", **{'aria-label': 'Select gender'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Department</label>
+                                {{ form.department(class="form-control", **{'aria-label': 'Department'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Contract End Date</label>
+                                {{ form.contract_end_date(class="form-control", **{'aria-label': 'Contract end date'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Seniority</label>
+                                {{ form.seniority(class="form-control", **{'aria-label': 'Seniority'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Management Status</label>
+                                {{ form.management_status(class="form-control", **{'aria-label': 'Management status'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Job Grade</label>
+                                {{ form.job_grade(class="form-control", **{'aria-label': 'Job grade'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Step</label>
+                                {{ form.step(class="form-control", **{'aria-label': 'Step'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Travel Allowance</label>
+                                {{ form.travel_allowance(class="form-control", **{'aria-label': 'Travel allowance'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Other Allowance</label>
+                                {{ form.other_allowance(class="form-control", **{'aria-label': 'Other allowance'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Non-Taxable Allowance</label>
+                                {{ form.non_taxable_allowance(class="form-control", **{'aria-label': 'Non-taxable allowance'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Other Deduction</label>
+                                {{ form.other_deduction(class="form-control", **{'aria-label': 'Other deduction'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Lunch Deduction Employee</label>
+                                {{ form.lunch_deduction_employee(class="form-control", **{'aria-label': 'Lunch deduction employee'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Lunch Deduction Court</label>
+                                {{ form.lunch_deduction_court(class="form-control", **{'aria-label': 'Lunch deduction court'}) }}
+                            </div>
+                            <div class="form-group">
+                                <label>Duty Station</label>
+                                {{ form.duty_station_id(class="form-control", required="required", **{'aria-label': 'Select duty station'}) }}
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Employee</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modify Employee Modals -->
+        {% for emp in employees %}
+            <div class="modal fade" id="modifyEmployeeModal{{ emp.id }}" tabindex="-1" aria-labelledby="modifyEmployeeModalLabel{{ emp.id }}" aria-hidden="true">
+                <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title">Edit Employee</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            <h5 class="modal-title" id="modifyEmployeeModalLabel{{ emp.id }}">Modify Employee</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <form id="modifyEmployeeForm{{ employee.id }}">
+                            <form id="modifyEmployeeForm{{ emp.id }}">
+                                <input type="hidden" name="employee_id" value="{{ emp.id }}">
                                 <input type="hidden" name="action" value="modify_employee">
-                                <input type="hidden" name="employee_id" value="{{ employee.id }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label>Name</label>
-                                            <input type="text" name="name" class="form-control" value="{{ employee.name }}" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label>Phone</label>
-                                            <input type="text" name="phone_number" class="form-control" value="{{ employee.phone_number }}">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label>Monthly Salary</label>
-                                            <input type="number" name="monthly_salary" class="form-control" value="{{ employee.monthly_salary }}" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label>Hire Date</label>
-                                            <input type="date" name="hire_date" class="form-control" value="{{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else '' }}" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label>Title</label>
-                                            <input type="text" name="title" class="form-control" value="{{ employee.title }}" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label>Department</label>
-                                            <input type="text" name="department" class="form-control" value="{{ employee.department }}" required>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label>Gender</label>
-                                            <select name="gender" class="form-control" required>
-                                                <option value="Male" {% if employee.gender == 'Male' %}selected{% endif %}>Male</option>
-                                                <option value="Female" {% if employee.gender == 'Female' %}selected{% endif %}>Female</option>
-                                                <option value="Other" {% if employee.gender == 'Other' %}selected{% endif %}>Other</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label>Additional Benefits</label>
-                                            <input type="number" name="additional_benefits" class="form-control" value="{{ employee.additional_benefits }}">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label>Job Grade</label>
-                                            <input type="text" name="job_grade" class="form-control" value="{{ employee.job_grade }}" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label>Duty Station</label>
-                                            <select name="duty_station_id" class="form-control" required>
-                                                {% for ds in duty_stations %}
-                                                    <option value="{{ ds.id }}" {% if ds.id == employee.duty_station_id %}selected{% endif %}>{{ ds.name }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label>Birth Date</label>
-                                            <input type="date" name="birth_date" class="form-control" value="{{ employee.birth_date.strftime('%Y-%m-%d') if employee.birth_date else '' }}" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label>Manager</label>
-                                            <select name="manager_id" class="form-control">
-                                                <option value="0" {% if not employee.manager_id %}selected{% endif %}>None</option>
-                                                {% for emp in employees %}
-                                                    <option value="{{ emp.id }}" {% if employee.manager_id == emp.id %}selected{% endif %}>{{ emp.name }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label>Management Status</label>
-                                            <input type="text" name="management_status" class="form-control" value="{{ employee.management_status }}" required>
-                                        </div>
-                                    </div>
+                                <div class="form-group">
+                                    <label>Name</label>
+                                    <input type="text" name="name" class="form-control" value="{{ emp.name }}" required aria-label="Employee name">
                                 </div>
-                                <button type="submit" class="btn btn-primary">Save</button>
+                                <div class="form-group">
+                                    <label>Phone Number</label>
+                                    <input type="text" name="phone_number" class="form-control" value="{{ emp.phone_number }}" aria-label="Phone number">
+                                </div>
+                                <div class="form-group">
+                                    <label>Monthly Salary</label>
+                                    <input type="number" name="monthly_salary" class="form-control" value="{{ emp.monthly_salary }}" step="0.01" required aria-label="Monthly salary">
+                                </div>
+                                <div class="form-group">
+                                    <label>Hire Date</label>
+                                    <input type="date" name="hire_date" class="form-control" value="{{ emp.hire_date.strftime('%Y-%m-%d') if emp.hire_date else '' }}" required aria-label="Hire date">
+                                </div>
+                                <div class="form-group">
+                                    <label>Job Title</label>
+                                    <input type="text" name="job_title" class="form-control" value="{{ emp.title }}" aria-label="Job title">
+                                </div>
+                                <div class="form-group">
+                                    <label>Department</label>
+                                    <input type="text" name="department" class="form-control" value="{{ emp.department }}" aria-label="Department">
+                                </div>
+                                <div class="form-group">
+                                    <label>Duty Station</label>
+                                    <select name="duty_station_id" class="form-control" aria-label="Select duty station">
+                                        {% for ds in duty_stations %}
+                                            <option value="{{ ds.id }}" {% if emp.duty_station_id == ds.id %}selected{% endif %}>{{ ds.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Manager</label>
+                                    <select name="manager_id" class="form-control" aria-label="Select manager">
+                                        <option value="0" {% if not emp.manager_id %}selected{% endif %}>None</option>
+                                        {% for manager in employees %}
+                                            <option value="{{ manager.id }}" {% if emp.manager_id == manager.id %}selected{% endif %}>{{ manager.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Badge ID</label>
+                                    <input type="text" name="badge_id" class="form-control" value="{{ emp.badge_id }}" aria-label="Badge ID">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update Employee</button>
                             </form>
                         </div>
                     </div>
                 </div>
             </div>
-            {% endfor %}
-        </tbody>
-    </table>
+        {% endfor %}
 
-    <div class="modal fade" id="addEmployeeModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add Employee</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="addEmployeeForm" enctype="multipart/form-data">
-                        <input type="hidden" name="action" value="add_employee">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label>Name</label>
-                                    {{ form.name(class="form-control", required=True) }}
-                                </div>
-                                <div class="mb-3">
-                                    <label>Phone</label>
-                                    {{ form.phone_number(class="form-control") }}
-                                </div>
-                                <div class="mb-3">
-                                    <label>Monthly Salary</label>
-                                    {{ form.monthly_salary(class="form-control", required=True) }}
-                                </div>
-                                <div class="mb-3">
-                                    <label>Hire Date</label>
-                                    {{ form.hire_date(class="form-control", required=True) }}
-                                </div>
-                                <div class="mb-3">
-                                    <label>Title</label>
-                                    {{ form.title(class="form-control", required=True) }}
-                                </div>
-                                <div class="mb-3">
-                                    <label>Department</label>
-                                    {{ form.department(class="form-control", required=True) }}
-                                </div>
+    <!-- Overtime Tab -->
+    {% elif tab == 'overtime' %}
+        <h3>Overtime</h3>
+        <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addOvertimeModal">Add Overtime</button>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Employee</th>
+                    <th>Duty Station</th>
+                    <th>Date</th>
+                    <th>Hours</th>
+                    <th>Rate</th>
+                    <th>Approved</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ot in overtime_records %}
+                    <tr>
+                        <td>{{ ot.id }}</td>
+                        <td>{{ ot.employee.name }}</td>
+                        <td>{{ ot.employee.duty_station.name if ot.employee.duty_station else 'N/A' }}</td>
+                        <td>{{ ot.date }}</td>
+                        <td>{{ ot.hours }}</td>
+                        <td>{{ ot.rate }}</td>
+                        <td>{{ 'Yes' if ot.approved else 'No' }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="{{ url_for('hr.export_report', report_type='overtime') }}" class="btn btn-success">Export Overtime</a>
+
+        <!-- Add Overtime Modal -->
+        <div class="modal fade" id="addOvertimeModal" tabindex="-1" aria-labelledby="addOvertimeModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addOvertimeModalLabel">Add Overtime</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addOvertimeForm">
+                            <input type="hidden" name="action" value="add_overtime">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="form-group">
+                                <label>Duty Station</label>
+                                <select name="duty_station_id" class="form-control" onchange="updateEmployeeDropdown(this.value, 'employee_id_overtime')" aria-label="Select duty station">
+                                    <option value="">Select Duty Station</option>
+                                    {% for ds in duty_stations %}
+                                        <option value="{{ ds.id }}">{{ ds.name }}</option>
+                                    {% endfor %}
+                                </select>
                             </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label>Gender</label>
-                                    {{ form.gender(class="form-control", required=True) }}
-                                </div>
-                                <div class="mb-3">
-                                    <label>Additional Benefits</label>
-                                    {{ form.additional_benefits(class="form-control") }}
-                                </div>
-                                <div class="mb-3">
-                                    <label>Job Grade</label>
-                                    {{ form.job_grade(class="form-control", required=True) }}
-                                </div>
-                                <div class="mb-3">
-                                    <label>Duty Station</label>
-                                    {{ form.duty_station_id(class="form-control", required=True) }}
-                                </div>
-                                <div class="mb-3">
-                                    <label>Birth Date</label>
-                                    {{ form.birth_date(class="form-control", required=True) }}
-                                </div>
-                                <div class="mb-3">
-                                    <label>Manager</label>
-                                    {{ form.manager_id(class="form-control") }}
-                                </div>
-                                <div class="mb-3">
-                                    <label>Photo</label>
-                                    {{ form.photo(class="form-control") }}
-                                </div>
-                                <div class="mb-3">
-                                    <label>Management Status</label>
-                                    {{ form.management_status(class="form-control", required=True) }}
-                                </div>
+                            <div class="form-group">
+                                <label>Employee</label>
+                                <select name="employee_id" id="employee_id_overtime" class="form-control" required aria-label="Select employee">
+                                    <option value="">Select Employee</option>
+                                </select>
                             </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Add</button>
-                    </form>
+                            <div class="form-group">
+                                <label>Date</label>
+                                <input type="date" name="date" class="form-control" required aria-label="Overtime date">
+                            </div>
+                            <div class="form-group">
+                                <label>Hours</label>
+                                <input type="number" name="hours" class="form-control" step="0.1" required aria-label="Overtime hours">
+                            </div>
+                            <div class="form-group">
+                                <label>Rate</label>
+                                <input type="number" name="rate" class="form-control" step="0.01" value="1.5" aria-label="Overtime rate">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Overtime</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="row mt-5">
-        <div class="col-md-6">
-            <h4>Employee Distribution and Salary by Duty Station</h4>
-            <form method="GET" action="{{ url_for('hr.hr') }}" class="mb-3">
-                <div class="row">
-                    <div class="col-md-4">
-                        <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+    <!-- Attendance Tab -->
+    {% elif tab == 'attendance' %}
+        <h3>Attendance</h3>
+        <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addAttendanceModal">Add Attendance</button>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Employee</th>
+                    <th>Duty Station</th>
+                    <th>Date</th>
+                    <th>Check In</th>
+                    <th>Check Out</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for att in attendance_records %}
+                    <tr>
+                        <td>{{ att.id }}</td>
+                        <td>{{ att.employee.name }}</td>
+                        <td>{{ att.employee.duty_station.name if att.employee.duty_station else 'N/A' }}</td>
+                        <td>{{ att.date }}</td>
+                        <td>{{ att.check_in }}</td>
+                        <td>{{ att.check_out }}</td>
+                        <td>{{ att.status }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="{{ url_for('hr.export_report', report_type='attendance') }}" class="btn btn-success">Export Attendance</a>
+
+        <!-- Add Attendance Modal -->
+        <div class="modal fade" id="addAttendanceModal" tabindex="-1" aria-labelledby="addAttendanceModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addAttendanceModalLabel">Add Attendance</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="col-md-4">
-                        <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
-                    </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary">Update Charts</button>
+                    <div class="modal-body">
+                        <form id="addAttendanceForm">
+                            <input type="hidden" name="action" value="add_attendance">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="form-group">
+                                <label>Duty Station</label>
+                                <select name="duty_station_id" class="form-control" onchange="updateEmployeeDropdown(this.value, 'employee_id_attendance')" aria-label="Select duty station">
+                                    <option value="">Select Duty Station</option>
+                                    {% for ds in duty_stations %}
+                                        <option value="{{ ds.id }}">{{ ds.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Employee</label>
+                                <select name="employee_id" id="employee_id_attendance" class="form-control" required aria-label="Select employee">
+                                    <option value="">Select Employee</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Date</label>
+                                <input type="date" name="date" class="form-control" required aria-label="Attendance date">
+                            </div>
+                            <div class="form-group">
+                                <label>Check In</label>
+                                <input type="datetime-local" name="check_in" class="form-control" aria-label="Check in time">
+                            </div>
+                            <div class="form-group">
+                                <label>Check Out</label>
+                                <input type="datetime-local" name="check_out" class="form-control" aria-label="Check out time">
+                            </div>
+                            <div class="form-group">
+                                <label>Badge ID</label>
+                                <input type="text" name="badge_id" class="form-control" aria-label="Badge ID">
+                            </div>
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select name="status" class="form-control" aria-label="Select status">
+                                    <option value="Present">Present</option>
+                                    <option value="Late">Late</option>
+                                    <option value="Absent">Absent</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Attendance</button>
+                        </form>
                     </div>
                 </div>
-            </form>
-            <h5>Total Salary Paid (Bar Chart)</h5>
-            <canvas id="salaryChart" height="200"></canvas>
+            </div>
         </div>
-        <div class="col-md-6">
-            <h5>Employee Distribution (% - Pie Chart)</h5>
-            <canvas id="distributionChart" height="200"></canvas>
+
+    <!-- Leave Tab -->
+    {% elif tab == 'leave' %}
+        <h3>Annual Leave</h3>
+        <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addLeaveModal">Add Leave</button>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Employee</th>
+                    <th>Duty Station</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Total Days</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for leave in leave_records %}
+                    <tr>
+                        <td>{{ leave.id }}</td>
+                        <td>{{ leave.employee.name }}</td>
+                        <td>{{ leave.employee.duty_station.name if leave.employee.duty_station else 'N/A' }}</td>
+                        <td>{{ leave.start_date }}</td>
+                        <td>{{ leave.end_date }}</td>
+                        <td>{{ leave.total_days }}</td>
+                        <td>{{ leave.status }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="{{ url_for('hr.export_report', report_type='leave') }}" class="btn btn-success">Export Leave</a>
+
+        <!-- Add Leave Modal -->
+        <div class="modal fade" id="addLeaveModal" tabindex="-1" aria-labelledby="addLeaveModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addLeaveModalLabel">Add Leave</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addLeaveForm">
+                            <input type="hidden" name="action" value="add_leave">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="form-group">
+                                <label>Duty Station</label>
+                                <select name="duty_station_id" class="form-control" onchange="updateEmployeeDropdown(this.value, 'employee_id_leave')" aria-label="Select duty station">
+                                    <option value="">Select Duty Station</option>
+                                    {% for ds in duty_stations %}
+                                        <option value="{{ ds.id }}">{{ ds.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Employee</label>
+                                <select name="employee_id" id="employee_id_leave" class="form-control" required aria-label="Select employee">
+                                    <option value="">Select Employee</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Start Date</label>
+                                <input type="date" name="start_date" class="form-control" required aria-label="Start date">
+                            </div>
+                            <div class="form-group">
+                                <label>End Date</label>
+                                <input type="date" name="end_date" class="form-control" required aria-label="End date">
+                            </div>
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select name="status" class="form-control" aria-label="Select status">
+                                    <option value="Pending">Pending</option>
+                                    <option value="Approved">Approved</option>
+                                    <option value="Rejected">Rejected</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Leave</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
+
+    <!-- Letters Tab -->
+    {% elif tab == 'letters' %}
+        <h3>Employment Letters</h3>
+        <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addLetterModal">Add Letter</button>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Employee</th>
+                    <th>Duty Station</th>
+                    <th>Type</th>
+                    <th>Content</th>
+                    <th>File</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for letter in letters %}
+                    <tr>
+                        <td>{{ letter.id }}</td>
+                        <td>{{ letter.employee.name }}</td>
+                        <td>{{ letter.employee.duty_station.name if letter.employee.duty_station else 'N/A' }}</td>
+                        <td>{{ letter.letter_type }}</td>
+                        <td>{{ letter.content }}</td>
+                        <td>
+                            {% if letter.file_path %}
+                                <a href="{{ url_for('static', filename=letter.file_path.split('static/')[1]) }}" target="_blank">Download</a>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Add Letter Modal -->
+        <div class="modal fade" id="addLetterModal" tabindex="-1" aria-labelledby="addLetterModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addLetterModalLabel">Add Letter</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addLetterForm">
+                            <input type="hidden" name="action" value="add_letter">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="form-group">
+                                <label>Duty Station</label>
+                                <select name="duty_station_id" class="form-control" onchange="updateEmployeeDropdown(this.value, 'employee_id_letter')" aria-label="Select duty station">
+                                    <option value="">Select Duty Station</option>
+                                    {% for ds in duty_stations %}
+                                        <option value="{{ ds.id }}">{{ ds.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Employee</label>
+                                <select name="employee_id" id="employee_id_letter" class="form-control" required aria-label="Select employee">
+                                    <option value="">Select Employee</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Letter Type</label>
+                                <select name="letter_type" class="form-control" required aria-label="Select letter type">
+                                    <option value="Promotion">Promotion</option>
+                                    <option value="Demotion">Demotion</option>
+                                    <option value="Warning">Warning</option>
+                                    <option value="Termination">Termination</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Content</label>
+                                <textarea name="content" class="form-control" required aria-label="Letter content"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Letter</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <!-- Contracts Tab -->
+    {% elif tab == 'contracts' %}
+        <h3>Contracts</h3>
+        <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addContractModal">Add Contract</button>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Employee</th>
+                    <th>Duty Station</th>
+                    <th>Title</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>File</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for contract in contracts %}
+                    <tr>
+                        <td>{{ contract.id }}</td>
+                        <td>{{ contract.employee.name }}</td>
+                        <td>{{ contract.employee.duty_station.name if contract.employee.duty_station else 'N/A' }}</td>
+                        <td>{{ contract.title }}</td>
+                        <td>{{ contract.start_date }}</td>
+                        <td>{{ contract.end_date }}</td>
+                        <td>
+                            {% if contract.file_path %}
+                                <a href="{{ url_for('static', filename=contract.file_path.split('static/')[1]) }}" target="_blank">Download</a>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Add Contract Modal -->
+        <div class="modal fade" id="addContractModal" tabindex="-1" aria-labelledby="addContractModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addContractModalLabel">Add Contract</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addContractForm">
+                            <input type="hidden" name="action" value="add_contract">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="form-group">
+                                <label>Duty Station</label>
+                                <select name="duty_station_id" class="form-control" onchange="updateEmployeeDropdown(this.value, 'employee_id_contract')" aria-label="Select duty station">
+                                    <option value="">Select Duty Station</option>
+                                    {% for ds in duty_stations %}
+                                        <option value="{{ ds.id }}">{{ ds.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Employee</label>
+                                <select name="employee_id" id="employee_id_contract" class="form-control" required aria-label="Select employee">
+                                    <option value="">Select Employee</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Title</label>
+                                <input type="text" name="title" class="form-control" required aria-label="Contract title">
+                            </div>
+                            <div class="form-group">
+                                <label>Content</label>
+                                <textarea name="content" class="form-control" required aria-label="Contract content"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Start Date</label>
+                                <input type="date" name="start_date" class="form-control" required aria-label="Start date">
+                            </div>
+                            <div class="form-group">
+                                <label>End Date</label>
+                                <input type="date" name="end_date" class="form-control" aria-label="End date">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Contract</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <!-- Positions Tab -->
+    {% elif tab == 'positions' %}
+        <h3>Positions</h3>
+        <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addPositionModal">Add Position</button>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Department</th>
+                    <th>Duty Station</th>
+                    <th>Salary Range</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pos in positions %}
+                    <tr>
+                        <td>{{ pos.id }}</td>
+                        <td>{{ pos.title }}</td>
+                        <td>{{ pos.department }}</td>
+                        <td>{{ pos.duty_station.name if pos.duty_station else 'N/A' }}</td>
+                        <td>{{ pos.salary_range_min }} - {{ pos.salary_range_max }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Add Position Modal -->
+        <div class="modal fade" id="addPositionModal" tabindex="-1" aria-labelledby="addPositionModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addPositionModalLabel">Add Position</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addPositionForm">
+                            <input type="hidden" name="action" value="add_position">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="form-group">
+                                <label>Title</label>
+                                <input type="text" name="title" class="form-control" required aria-label="Position title">
+                            </div>
+                            <div class="form-group">
+                                <label>Description</label>
+                                <textarea name="description" class="form-control" aria-label="Position description"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Department</label>
+                                <input type="text" name="department" class="form-control" required aria-label="Department">
+                            </div>
+                            <div class="form-group">
+                                <label>Salary Range Min</label>
+                                <input type="number" name="salary_range_min" class="form-control" step="0.01" required aria-label="Salary range minimum">
+                            </div>
+                            <div class="form-group">
+                                <label>Salary Range Max</label>
+                                <input type="number" name="salary_range_max" class="form-control" step="0.01" required aria-label="Salary range maximum">
+                            </div>
+                            <div class="form-group">
+                                <label>Duty Station</label>
+                                <select name="duty_station_id" class="form-control" aria-label="Select duty station">
+                                    <option value="">None</option>
+                                    {% for ds in duty_stations %}
+                                        <option value="{{ ds.id }}">{{ ds.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Position</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Chart -->
+    <div class="mt-4">
+        <h5>{{ chart_data.title }}</h5>
+        <canvas id="hrChart" height="200"></canvas>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast align-items-center text-white bg-${type} border-0 position-fixed top-0 end-0 m-3`;
-    toast.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">${message}</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    `;
-    document.body.appendChild(toast);
-    new bootstrap.Toast(toast).show();
-    setTimeout(() => toast.remove(), 3000);
-}
+    const chartData = {{ chart_data|tojson|safe }};
+    const ctx = document.getElementById('hrChart').getContext('2d');
+    new Chart(ctx, {
+        type: chartData.type,
+        data: {
+            labels: chartData.labels,
+            datasets: chartData.datasets.length > 0 ? chartData.datasets : [{
+                label: chartData.title,
+                data: chartData.data,
+                backgroundColor: chartData.backgroundColor,
+                borderColor: chartData.backgroundColor.replace('0.2', '1'),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: chartData.type === 'bar' || chartData.type === 'line' ? {
+                y: { beginAtZero: true }
+            } : {}
+        }
+    });
 
-document.getElementById('addEmployeeForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    try {
-        const response = await fetch('/hr/', {
+    function deleteEmployee(employeeId) {
+        if (confirm('Are you sure you want to delete this employee?')) {
+            fetch('{{ url_for("hr.hr") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'action': 'delete_employee',
+                    'employee_id': employeeId,
+                    'csrf_token': '{{ csrf_token() }}'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.status === 'success') {
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while deleting the employee.');
+            });
+        }
+    }
+
+    document.getElementById('addEmployeeForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        fetch('{{ url_for("hr.hr") }}', {
             method: 'POST',
             body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.status === 'success') {
+                location.reload();
+            } else if (data.errors) {
+                console.log(data.errors);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while adding the employee.');
         });
-        const data = await response.json();
-        if (data.status === 'success') {
-            showToast(data.message, 'success');
-            e.target.reset();
-            bootstrap.Modal.getInstance(document.getElementById('addEmployeeModal')).hide();
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            showToast(data.message, 'danger');
-        }
-    } catch (error) {
-        showToast('Error adding employee', 'danger');
-    }
-});
-
-document.querySelectorAll('[id^="modifyEmployeeForm"]').forEach(form => {
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(form);
-        const employeeId = formData.get('employee_id');
-        try {
-            const response = await fetch('/hr/', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
-            if (data.status === 'success') {
-                showToast(data.message, 'success');
-                const row = document.getElementById(`employee-row-${employeeId}`);
-                row.cells[1].textContent = data.employee.name;
-                row.cells[2].textContent = data.employee.title;
-                row.cells[3].textContent = data.employee.department;
-                row.cells[4].textContent = data.employee.location;
-                row.cells[5].textContent = data.employee.phone_number;
-                row.cells[6].textContent = data.employee.duty_station;
-                row.cells[7].textContent = data.employee.manager || 'None';
-                row.cells[10].textContent = data.employee.monthly_salary;
-                row.cells[11].textContent = data.employee.additional_benefits;
-                row.cells[12].textContent = data.employee.hire_date;
-                row.cells[13].textContent = data.employee.created_at;
-                bootstrap.Modal.getInstance(document.getElementById(`modifyEmployeeModal${employeeId}`)).hide();
-            } else {
-                showToast(data.message, 'danger');
-            }
-        } catch (error) {
-            showToast('Error updating employee', 'danger');
-        }
     });
-});
 
-document.querySelectorAll('.remove-employee').forEach(button => {
-    button.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const employeeId = button.getAttribute('data-employee-id');
-        if (!confirm('Are you sure?')) return;
-        try {
-            const response = await fetch('/hr/', {
+    {% for emp in employees %}
+        document.getElementById('modifyEmployeeForm{{ emp.id }}').addEventListener('submit', function(e) {
+            e.preventDefault();
+            fetch('{{ url_for("hr.hr") }}', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'remove_employee', employee_id: employeeId })
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(new FormData(this))
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.status === 'success') {
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating the employee.');
             });
-            const data = await response.json();
+        });
+    {% endfor %}
+
+    document.getElementById('addOvertimeForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetch('{{ url_for("hr.hr") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams(new FormData(this))
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
             if (data.status === 'success') {
-                showToast(data.message, 'success');
-                document.getElementById(`employee-row-${employeeId}`).remove();
-            } else {
-                showToast(data.message, 'danger');
+                location.reload();
             }
-        } catch (error) {
-            showToast('Error removing employee', 'danger');
-        }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while adding overtime.');
+        });
     });
-});
 
-// Chart.js for Salary and Distribution Charts
-const salaryCtx = document.getElementById('salaryChart').getContext('2d');
-const salaryChart = new Chart(salaryCtx, {
-    type: 'bar',
-    data: {
-        labels: {{ salary_labels|tojson|safe }},
-        datasets: [{
-            label: 'Total Salary Paid (ETB)',
-            data: {{ salary_data|tojson|safe }},
-            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-            borderColor: 'rgba(54, 162, 235, 1)',
-            borderWidth: 1
-        }]
-    },
-    options: {
-        scales: {
-            y: {
-                beginAtZero: true
+    document.getElementById('addAttendanceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetch('{{ url_for("hr.hr") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams(new FormData(this))
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.status === 'success') {
+                location.reload();
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while adding attendance.');
+        });
+    });
+
+    document.getElementById('addLeaveForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetch('{{ url_for("hr.hr") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams(new FormData(this))
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.status === 'success') {
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while adding leave.');
+        });
+    });
+
+    document.getElementById('addLetterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetch('{{ url_for("hr.hr") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams(new FormData(this))
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.status === 'success') {
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while adding the letter.');
+        });
+    });
+
+    document.getElementById('addContractForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetch('{{ url_for("hr.hr") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams(new FormData(this))
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.status === 'success') {
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while adding the contract.');
+        });
+    });
+
+    document.getElementById('addPositionForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetch('{{ url_for("hr.hr") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams(new FormData(this))
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.status === 'success') {
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while adding the position.');
+        });
+    });
+
+    function updateEmployeeDropdown(dutyStationId, selectId) {
+        const employeeSelect = document.getElementById(selectId);
+        employeeSelect.innerHTML = '<option value="">Select Employee</option>';
+        if (dutyStationId) {
+            fetch(`/hr/employees_by_duty_station?duty_station_id=${dutyStationId}`)
+                .then(response => response.json())
+                .then(data => {
+                    data.employees.forEach(emp => {
+                        const option = document.createElement('option');
+                        option.value = emp.id;
+                        option.textContent = emp.name;
+                        employeeSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching employees:', error);
+                });
         }
     }
-});
-
-const distributionCtx = document.getElementById('distributionChart').getContext('2d');
-const distributionChart = new Chart(distributionCtx, {
-    type: 'pie',
-    data: {
-        labels: {{ distribution_labels|tojson|safe }},
-        datasets: [{
-            label: 'Employee Distribution (%)',
-            data: {{ distribution_data|tojson|safe }},
-            backgroundColor: [
-                '#FF6F61',
-                '#6B5B95',
-                '#88B04B',
-                '#F7CAC9',
-                '#92A8D1'
-            ],
-            borderWidth: 1
-        }]
-    },
-    options: {
-        responsive: true
-    }
-});
 </script>
 {% endblock %}

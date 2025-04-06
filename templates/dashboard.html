@@ -10,7 +10,7 @@
             <div class="card-body">
                 <h5 class="card-title">Customers</h5>
                 <p class="card-text">Total: <span id="num_customers">{{ num_customers | default(0) }}</span></p>
-                <p class="card-text">Month Diff: {{ customer_month_diff | format_currency | default('$0.00') }}</p>
+                <p class="card-text">Month Diff: {{ customer_month_diff | format_currency | default('ETB 0.00') }}</p>
                 <div class="chart-container">
                     <canvas id="customersChart"></canvas>
                 </div>
@@ -24,7 +24,7 @@
             <div class="card-body">
                 <h5 class="card-title">Orders</h5>
                 <p class="card-text">Total: <span id="num_orders">{{ num_orders | default(0) }}</span></p>
-                <p class="card-text">Month Diff: {{ order_month_diff | format_currency | default('$0.00') }}</p>
+                <p class="card-text">Month Diff: {{ order_month_diff | format_currency | default('ETB 0.00') }}</p>
                 <div class="chart-container">
                     <canvas id="ordersChart"></canvas>
                 </div>
@@ -61,14 +61,14 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td>Planned</td><td id="planned_revenue">{{ planned_revenue | format_currency | default('$0.00') }}</td></tr>
-                            <tr><td>Actual</td><td id="actual_revenue">{{ actual_revenue | format_currency | default('$0.00') }}</td></tr>
-                            <tr><td>Current Month</td><td id="current_month_revenue">{{ current_month_revenue | format_currency | default('$0.00') }}</td></tr>
-                            <tr><td>Last Month</td><td id="last_month_revenue">{{ last_month_revenue | format_currency | default('$0.00') }}</td></tr>
-                            <tr><td>Month Diff</td><td>{{ revenue_month_diff | format_currency | default('$0.00') }}</td></tr>
-                            <tr><td>Current Year</td><td id="current_year_revenue">{{ current_year_revenue | format_currency | default('$0.00') }}</td></tr>
-                            <tr><td>Last Year</td><td id="last_year_revenue">{{ last_year_revenue | format_currency | default('$0.00') }}</td></tr>
-                            <tr><td>Year Diff</td><td>{{ revenue_year_diff | format_currency | default('$0.00') }}</td></tr>
+                            <tr><td>Planned</td><td id="planned_revenue">{{ planned_revenue | format_currency | default('ETB 0.00') }}</td></tr>
+                            <tr><td>Actual</td><td id="actual_revenue">{{ actual_revenue | format_currency | default('ETB 0.00') }}</td></tr>
+                            <tr><td>Current Month</td><td id="current_month_revenue">{{ current_month_revenue | format_currency | default('ETB 0.00') }}</td></tr>
+                            <tr><td>Last Month</td><td id="last_month_revenue">{{ last_month_revenue | format_currency | default('ETB 0.00') }}</td></tr>
+                            <tr><td>Month Diff</td><td id="revenue_month_diff">{{ revenue_month_diff | format_currency | default('ETB 0.00') }}</td></tr>
+                            <tr><td>Current Year</td><td id="current_year_revenue">{{ current_year_revenue | format_currency | default('ETB 0.00') }}</td></tr>
+                            <tr><td>Last Year</td><td id="last_year_revenue">{{ last_year_revenue | format_currency | default('ETB 0.00') }}</td></tr>
+                            <tr><td>Year Diff</td><td id="revenue_year_diff">{{ revenue_year_diff | format_currency | default('ETB 0.00') }}</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -86,11 +86,11 @@
                     <div class="product-info">
                         {% if top_product %}
                             <h6 id="top_product_name">{{ top_product.name }}</h6>
-                            <p id="top_product_revenue">Revenue: {{ top_product.total_revenue | format_currency | default('$0.00') }}</p>
+                            <p id="top_product_revenue">Revenue: {{ top_product.total_revenue | format_currency | default('ETB 0.00') }}</p>
                             <p id="top_product_quantity">Quantity: {{ top_product.total_quantity | default(0) }}</p>
                         {% else %}
                             <h6 id="top_product_name">N/A</h6>
-                            <p id="top_product_revenue">Revenue: $0.00</p>
+                            <p id="top_product_revenue">Revenue: ETB 0.00</p>
                             <p id="top_product_quantity">Quantity: 0</p>
                         {% endif %}
                     </div>
@@ -110,6 +110,19 @@
             </div>
         </div>
     </div>
+
+    <!-- HR Summary Card -->
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h5 class="card-title">HR Summary</h5>
+                <p>Total Employees: <span id="total_employees">{{ hr_summary.total_employees }}</span></p>
+                <p>Total OT Hours: <span id="total_ot_hours">{{ hr_summary.total_ot_hours }}</span></p>
+                <p>Attendance Today: <span id="attendance_today">{{ hr_summary.attendance_today }}</span></p>
+                <p>Pending Leave: <span id="leave_pending">{{ hr_summary.leave_pending }}</span></p>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Include Chart.js and jQuery -->
@@ -118,10 +131,8 @@
 
 <!-- JavaScript for Chart Rendering and AJAX -->
 <script>
-    // Chart instances
     let customersChart, ordersChart, productionChart, revenueChart, dutyStationsChart;
 
-    // Function to draw star background
     function drawStarBackground() {
         const canvas = document.getElementById('starCanvas');
         const ctx = canvas.getContext('2d');
@@ -144,7 +155,6 @@
         drawStar(canvas.width / 2, canvas.height / 2, 80, 5, Math.PI / 4);
     }
 
-    // Initial chart rendering
     function renderCharts(data) {
         const customersCtx = document.getElementById('customersChart').getContext('2d');
         customersChart = new Chart(customersCtx, {
@@ -208,7 +218,6 @@
         drawStarBackground();
     }
 
-    // Initial data from Jinja2 with default values
     const initialData = {
         num_customers: {{ num_customers | default(0) }},
         num_orders: {{ num_orders | default(0) }},
@@ -220,47 +229,67 @@
         last_month_revenue: {{ last_month_revenue | default(0) }},
         current_year_revenue: {{ current_year_revenue | default(0) }},
         last_year_revenue: {{ last_year_revenue | default(0) }},
+        revenue_month_diff: {{ revenue_month_diff | default(0) }},
+        revenue_year_diff: {{ revenue_year_diff | default(0) }},
         top_product: {
             name: {% if top_product %}'{{ top_product.name | default('N/A') }}'{% else %}'N/A'{% endif %},
             total_revenue: {% if top_product %}{{ top_product.total_revenue | default(0) }}{% else %}0{% endif %},
             total_quantity: {% if top_product %}{{ top_product.total_quantity | default(0) }}{% else %}0{% endif %}
         },
-        duty_station_counts: {{ duty_station_counts | default({}) | tojson }}
+        duty_station_counts: {{ duty_station_counts | default({}) | tojson }},
+        hr_summary: {
+            total_employees: {{ hr_summary.total_employees | default(0) }},
+            total_ot_hours: {{ hr_summary.total_ot_hours | default(0) }},
+            attendance_today: {{ hr_summary.attendance_today | default(0) }},
+            leave_pending: {{ hr_summary.leave_pending | default(0) }}
+        }
     };
 
-    // Debug logging
     console.log("Script started");
     console.log("Initial data:", initialData);
 
-    // Render initial charts
     renderCharts(initialData);
 
-    // AJAX update function
     function updateDashboard() {
         $.ajax({
-            url: '/dashboard_data',
+            url: '/dashboard/dashboard_data',  // Adjusted URL to include the blueprint prefix
             method: 'GET',
             success: function(data) {
-                // Update text elements
-                $('#num_customers').text(data.num_customers);
-                $('#num_orders').text(data.num_orders);
-                $('#planned_revenue').text(data.planned_revenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' }));
-                $('#actual_revenue').text(data.actual_revenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' }));
-                $('#current_month_revenue').text(data.current_month_revenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' }));
-                $('#last_month_revenue').text(data.last_month_revenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' }));
-                $('#current_year_revenue').text(data.current_year_revenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' }));
-                $('#last_year_revenue').text(data.last_year_revenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' }));
-                $('#top_product_name').text(data.top_product.name);
-                $('#top_product_revenue').text('Revenue: ' + data.top_product.total_revenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' }));
-                $('#top_product_quantity').text('Quantity: ' + data.top_product.total_quantity);
+                if (data.error) {
+                    console.error('Error in dashboard data:', data.error);
+                    return;
+                }
+                $('#num_customers').text(data.num_customers || 0);
+                $('#num_orders').text(data.num_orders || 0);
+                $('#planned_revenue').text('ETB ' + (data.planned_revenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+                $('#actual_revenue').text('ETB ' + (data.actual_revenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+                $('#current_month_revenue').text('ETB ' + (data.current_month_revenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+                $('#last_month_revenue').text('ETB ' + (data.last_month_revenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+                $('#current_year_revenue').text('ETB ' + (data.current_year_revenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+                $('#last_year_revenue').text('ETB ' + (data.last_year_revenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+                $('#revenue_month_diff').text('ETB ' + (data.current_month_revenue - data.last_month_revenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+                $('#revenue_year_diff').text('ETB ' + (data.current_year_revenue - data.last_year_revenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+                $('#top_product_name').text(data.top_product.name || 'N/A');
+                $('#top_product_revenue').text('Revenue: ETB ' + (data.top_product.total_revenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+                $('#top_product_quantity').text('Quantity: ' + (data.top_product.total_quantity || 0));
+                $('#total_employees').text(data.hr_summary.total_employees || 0);
+                $('#total_ot_hours').text(data.hr_summary.total_ot_hours || 0);
+                $('#attendance_today').text(data.hr_summary.attendance_today || 0);
+                $('#leave_pending').text(data.hr_summary.leave_pending || 0);
 
-                // Update charts
-                customersChart.data.datasets[0].data = [data.num_customers];
-                ordersChart.data.datasets[0].data = [data.num_orders];
-                productionChart.data.datasets[0].data = [data.planned_production, data.actual_production];
-                revenueChart.data.datasets[0].data = [data.planned_revenue, data.actual_revenue, data.current_month_revenue, data.last_month_revenue, data.current_year_revenue, data.last_year_revenue];
-                dutyStationsChart.data.labels = Object.keys(data.duty_station_counts);
-                dutyStationsChart.data.datasets[0].data = Object.values(data.duty_station_counts);
+                customersChart.data.datasets[0].data = [data.num_customers || 0];
+                ordersChart.data.datasets[0].data = [data.num_orders || 0];
+                productionChart.data.datasets[0].data = [data.planned_production || 0, data.actual_production || 0];
+                revenueChart.data.datasets[0].data = [
+                    data.planned_revenue || 0,
+                    data.actual_revenue || 0,
+                    data.current_month_revenue || 0,
+                    data.last_month_revenue || 0,
+                    data.current_year_revenue || 0,
+                    data.last_year_revenue || 0
+                ];
+                dutyStationsChart.data.labels = Object.keys(data.duty_station_counts || {});
+                dutyStationsChart.data.datasets[0].data = Object.values(data.duty_station_counts || {});
 
                 customersChart.update();
                 ordersChart.update();
@@ -276,7 +305,6 @@
         });
     }
 
-    // Update every 10 seconds
     setInterval(updateDashboard, 10000);
 </script>
 <style>
@@ -314,7 +342,7 @@
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        color: #fff;
+        color: #c63535;
         text-shadow: 0 0 5px #000;
         text-align: center;
     }

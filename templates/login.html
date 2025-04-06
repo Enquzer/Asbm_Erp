@@ -1,5 +1,4 @@
 <!-- templates/login.html -->
-<!-- templates/login.html -->
 {% extends 'base.html' %}
 {% block title %}Login{% endblock %}
 {% block content %}
@@ -13,14 +12,19 @@
                         {{ form.hidden_tag() }}
                         <div class="mb-3">
                             {{ form.username.label(class="form-label fw-medium") }}
-                            {{ form.username(class="form-control form-control-lg", placeholder="Enter username", required=True) }}
+                            {{ form.username(class="form-control form-control-lg", placeholder="Enter username", required=True, **{'aria-label': 'Username'}) }}
                             <div class="invalid-feedback">
                                 Please enter a username.
                             </div>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-3 position-relative">
                             {{ form.password.label(class="form-label fw-medium") }}
-                            {{ form.password(class="form-control form-control-lg", placeholder="Enter password", required=True) }}
+                            <div class="input-group">
+                                {{ form.password(class="form-control form-control-lg", placeholder="Enter password", required=True, **{'aria-label': 'Password'}) }}
+                                <button type="button" class="btn btn-outline-secondary" id="togglePassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
                             <div class="invalid-feedback">
                                 Please enter a password.
                             </div>
@@ -32,19 +36,19 @@
                             </div>
                         </div>
                         {{ form.submit(class="btn btn-primary btn-lg w-100 fw-medium") }}
+                        <p class="text-center mt-3 text-muted small">
+                            <a href="{{ url_for('user_management.forgot_password') }}" class="text-decoration-none">Forgot Password?</a>
+                        </p>
                     </form>
                     <p class="text-center mt-3 text-muted small">
                         Don't have an account? 
-                        <a href="{{ url_for('user_management.register') }}" class="text-decoration-none">
-                            Sign up
-                        </a>
+                        <a href="{{ url_for('user_management.register') }}" class="text-decoration-none">Sign up</a>
                     </p>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
 
 <style>
     .card {
@@ -71,23 +75,49 @@
     .btn-primary:hover {
         background-color: #0b5ed7;
     }
+
+    #togglePassword {
+        border-left: 0;
+    }
+
+    #togglePassword i.fa-eye-slash {
+        display: none;
+    }
+
+    #togglePassword.show i.fa-eye {
+        display: none;
+    }
+
+    #togglePassword.show i.fa-eye-slash {
+        display: inline;
+    }
 </style>
 
 <script>
     // Bootstrap form validation
     (function () {
-        'use strict'
-        var forms = document.querySelectorAll('.needs-validation')
-        Array.prototype.slice.call(forms)
-            .forEach(function (form) {
-                form.addEventListener('submit', function (event) {
-                    if (!form.checkValidity()) {
-                        event.preventDefault()
-                        event.stopPropagation()
-                    }
-                    form.classList.add('was-validated')
-                }, false)
-            })
-    })()
+        'use strict';
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const firstInvalid = form.querySelector(':invalid');
+                    if (firstInvalid) firstInvalid.focus();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    })();
+
+    // Password visibility toggle
+    document.getElementById('togglePassword').addEventListener('click', function () {
+        const passwordInput = document.querySelector('input[name="password"]');
+        const toggleButton = this;
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        toggleButton.classList.toggle('show');
+    });
 </script>
 {% endblock %}
